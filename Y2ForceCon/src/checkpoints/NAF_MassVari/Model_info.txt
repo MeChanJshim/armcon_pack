@@ -1,0 +1,2 @@
+[File Name] NAF_massVari_policy_script.pt
+[Update: 260323-0108]checkpoints_second_algorithm/runs/20260321-054857/artifacts/secondNAF_policy_updates_300000.pt

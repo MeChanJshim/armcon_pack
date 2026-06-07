@@ -1,0 +1,43 @@
+Y2RobMotion:
+  robot:
+    name: ur10skku
+    number_of_joints: 6
+    control_period: 0.008
+    package_bundle_dir: /home/jay/armcon_ws/src/armcon_pack
+    trajectory_mode: 1  # 0: cmd_6D, 1: cmd_9D, 2: cmd_continue9D
+    joint_names:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+      - ""
+    ee_to_tcp:
+      - [-1.0,  0.0,  0.0,  0.0]
+      - [ 0.0,  1.0,  0.0,  0.0]
+      - [ 0.0,  0.0, -1.0,  153.0]
+      - [ 0.0,  0.0,  0.0,  1.0]
+
+  ros:
+    test_mode: false
+    remapping_enabled: true
+    remap_state_topic: /joint_states
+    remap_command_topic: /forward_position_controller/commands
+    joy_move_topic_suffix: /joy_move
+    camera_teaching_command_topic: /y2_gesteaching/teaching_command
+
+  joystick:
+    axis_mapping: [4, 3, 7, 1, 0, 6]
+    axis_scales: [20.0, 20.0, 20.0, 0.2, 0.2, 0.2]
+    camera:
+      pose_gains: [1.0, 1.0, 1.0, 0.6, 0.6, 0.6]
+      max_deltas: [800.0, 800.0, 800.0, 1.35, 1.35, 1.35]
+      deadbands: [5.0, 5.0, 5.0, 0.03, 0.03, 0.03]
+      rate_limits: [1.5, 1.5, 1.5, 0.008, 0.008, 0.008]
+      command_timeout: 0.3
+    force:
+      input_axis: 2
+      input_scale: 5.0
+      target_axis: 2
+      input_neutral: 1.0

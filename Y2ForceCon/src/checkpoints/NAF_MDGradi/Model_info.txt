@@ -1,0 +1,3 @@
+[File Name] NAF_mdGradi_policy_script.pt
+[Update: 260323-0108]checkpoints_third_algorithm/runs/20260320-235721/artifacts/thirdNAF_policy_updates_272000.pt
+[Update: 260324-1159]checkpoints_third_algorithm/runs/20260324-223310/artifacts/thirdNAF_policy_updates_50000.pt

@@ -1,0 +1,7 @@
+[File Name] contextNAF_mdGradi_policy_script.pt
+[Update: 260323-0108]checkpoints_fourth_algorithm/runs/20260320-101626/artifacts/contextNAF_policy_updates_156000.pt
+[Update: 260323-0300]checkpoints_fourth_algorithm/runs/20260320-101626/artifacts/contextNAF_policy_updates_274000.pt
+[Update: 260323-0351]checkpoints_fourth_algorithm/runs/20260320-101626/artifacts/contextNAF_policy_updates_156000.pt
+[Update: 260324-2256]checkpoints_fourth_algorithm/runs/20260324-093156/artifacts/contextNAF_policy_updates_50000.pt
+[Update: 260325-1114]checkpoints_fourth_algorithm/runs/20260324-213827/artifacts/contextNAF_policy_updates_148000.pt
+[Update: 260325-1532]checkpoints_fourth_algorithm/runs/20260324-015214/artifacts/contextNAF_policy_updates_82000.pt

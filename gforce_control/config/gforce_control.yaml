@@ -1,0 +1,50 @@
+gforce_control:
+  # Standalone gforce_control default. Y2RobMotion overrides this with CONTROL_PERIOD
+  # from Y2RobMotion/setup_parameters.hpp so the robot loop and force controller stay synced.
+  dt: 0.008
+  controller_mode: gforce
+
+  # axis_mode:
+  #   base_rotation          : axis_rotation is expressed in base frame.
+  #   ee_rotation            : axis_rotation is expressed in end-effector frame.
+  #   desired_force_vector   : desired_force vector becomes local z force axis.
+  # Original Y2RobMotion Force_Con_Coordinate == 1 corresponds to ee_rotation.
+  axis_mode: ee_rotation
+
+  # Row-major 3x3 rotation matrix.
+  # The local z axis, column 2, is the force-controlled axis.
+  axis_rotation: [1, 0, 0,
+                  0, 1, 0,
+                  0, 0, 1]
+
+  checkpoint:
+    # Model lookup rule when explicit_model_path is empty:
+    #   <package_root>/<root>/<profile>/<model_file_name>
+    # Example:
+    #   /home/jay/armcon_ws/src/armcon_pack/gforce_control/checkpoints/ts_0p008_sen_ts_0p002/gforce.pt
+    root: checkpoints
+    profile: ts_0p008_sen_ts_0p002
+    model_file_name: gforce.pt
+    explicit_model_path: ""
+
+  # Translational axes are in kg, Ns/m, N/m.
+  # Rotational axes are in kg*m^2 scale, Nms/rad, Nm/rad.
+  mass: [2.0, 2.0, 2.0, 0.5, 0.5, 0.5]
+  damping: [6000.0, 6000.0, 6000.0, 100.0, 100.0, 100.0]
+  stiffness: [2000.0, 2000.0, 2000.0, 100.0, 100.0, 100.0]
+
+  thresholds:
+    desired_force: 0.01
+    actual_force: 1.50
+    precontact_force_hold: 15.0
+
+  return_tau:
+    mass: 0.20
+    damping: 0.20
+    stiffness: 0.20
+
+  desired_force_axis_eps: 1.0e-6
+  # Original Y2RobMotion treats FC_AC_desX[6:9] as force commands in the
+  # selected local/control frame, not as a base-frame vector.
+  desired_force_is_control_frame: true
+  use_force_vector_magnitude_as_axis_command: true

@@ -1,0 +1,53 @@
+y2_joystick_node:
+  ros__parameters:
+    joy_topic: "joy"
+
+    axes:
+      topic_name: "/ur10skku/joy_move"
+      message_type: "std_msgs/msg/Float64MultiArray"
+      count: 8
+
+    mappings:
+      names:
+        - cmd_mode_idling
+        - cmd_mode_guiding
+        - cmd_mode_joystick
+        - cmd_mode_joystick_force
+        - recording_stop
+        - recording_start
+
+      cmd_mode_idling:
+        button_index: 2
+        topic_name: "/ur10skku/cmdMode"
+        message_type: "std_msgs/msg/String"
+        string_value: "Idling"
+
+      cmd_mode_guiding:
+        button_index: 0
+        topic_name: "/ur10skku/cmdMode"
+        message_type: "std_msgs/msg/String"
+        string_value: "Guiding"
+
+      cmd_mode_joystick:
+        button_index: 1
+        topic_name: "/ur10skku/cmdMode"
+        message_type: "std_msgs/msg/String"
+        string_value: "Joystick"
+
+      cmd_mode_joystick_force:
+        button_index: 3
+        topic_name: "/ur10skku/cmdMode"
+        message_type: "std_msgs/msg/String"
+        string_value: "Joystick_force"
+
+      recording_stop:
+        button_index: 4
+        topic_name: "/ur10skku/record_boolean_L"
+        message_type: "std_msgs/msg/Bool"
+        bool_value: true
+
+      recording_start:
+        button_index: 5
+        topic_name: "/ur10skku/record_boolean_R"
+        message_type: "std_msgs/msg/Bool"
+        bool_value: true
