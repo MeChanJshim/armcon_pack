@@ -15,7 +15,6 @@ find_package(Y2Matrix REQUIRED)
 find_package(Y2Kinematics REQUIRED)
 find_package(Y2Trajectory REQUIRED)
 find_package(gforce_control REQUIRED)
-find_package(osqp REQUIRED)
 
 set(AMENT_DEP
 rclcpp sensor_msgs geometry_msgs

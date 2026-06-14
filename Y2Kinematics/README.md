@@ -5,7 +5,8 @@ Robot kinematics library.
 ## Purpose
 
 Provides forward kinematics, Jacobian calculations, and robot-specific
-kinematics classes for UR and KUKA-style manipulators.
+kinematics classes for UR and KUKA-style manipulators. Inverse kinematics is
+solved with damped least squares (DLS).
 
 ## Main Usage
 

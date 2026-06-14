@@ -1,3 +1,3 @@
 # System/ROS dependencies are documented in REQUIREMENTS.md.
-# This workspace is primarily C++/ROS 2 and does not require Python packages
-# for the core controller build.
+# Python packages are only needed for helper/generator tools.
+sympy

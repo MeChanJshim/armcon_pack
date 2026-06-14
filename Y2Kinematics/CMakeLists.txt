@@ -9,30 +9,19 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Y2Matrix REQUIRED)
-find_package(osqp REQUIRED)
 
 # include directories
 include_directories(
     include
-    ${osqp_INCLUDE_DIRS}
 )
 
 # === Create libraries ===
-
-# QP_solver library
-add_library(QP_solver src/QP_solver.cpp)
-target_include_directories(QP_solver PUBLIC
-$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-$<INSTALL_INTERFACE:include>)
-target_link_libraries(QP_solver PUBLIC osqp::osqp)
-ament_target_dependencies(QP_solver PUBLIC rclcpp Y2Matrix)
 
 # Kinematics library
 add_library(Kinematics src/Kinematics.cpp)
 target_include_directories(Kinematics PUBLIC
 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 $<INSTALL_INTERFACE:include>)
-target_link_libraries(Kinematics PUBLIC QP_solver)
 ament_target_dependencies(Kinematics PUBLIC rclcpp Y2Matrix)
 
 # KinematicsKUKAiiwa library
@@ -61,11 +50,6 @@ ament_target_dependencies(KinematicsUR10e PUBLIC rclcpp Y2Matrix)
 
 # === Create executables ===
 
-# osqp test
-add_executable(osqp_test src/Examples/osqp_test.cpp)
-target_link_libraries(osqp_test osqp::osqp)
-ament_target_dependencies(osqp_test rclcpp)
-
 # Executable for testing KUKA iiwa kinematics
 add_executable(ExampleOfKUKAiiwa src/Examples/ExampleOfKUKAiiwa.cpp)
 target_link_libraries(ExampleOfKUKAiiwa KinematicsKUKAiiwa)
@@ -78,14 +62,14 @@ ament_target_dependencies(ExampleOfUR10 rclcpp Y2Matrix)
 
 # === Create install ===
 # install libraries
-install(TARGETS QP_solver Kinematics KinematicsKUKAiiwa KinematicsUR10 KinematicsUR10e
+install(TARGETS Kinematics KinematicsKUKAiiwa KinematicsUR10 KinematicsUR10e
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
 )
 
 # install executables
-install(TARGETS osqp_test ExampleOfKUKAiiwa ExampleOfUR10
+install(TARGETS ExampleOfKUKAiiwa ExampleOfUR10
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -200,9 +200,8 @@ int main() {
     // Create an instance of KinematicsUR10
     KinematicsUR10 UR10Kinematics(0.01, static_cast<size_t>(6), YMatrix::identity(4)); // Sampling time 10ms (100Hz), 6 DOF
     
-    // Set QP parameters
     UR10Kinematics.setControlGains(1.0, 1.0);
-    UR10Kinematics.setQPWeights(1.0, 0.1, 0.01);
+    UR10Kinematics.setDLSDamping(0.01);
 
     // Set joint limits
     std::vector<double> q_min = {-2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI};

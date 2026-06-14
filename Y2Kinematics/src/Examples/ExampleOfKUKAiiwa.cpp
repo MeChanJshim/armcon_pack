@@ -9,9 +9,8 @@ int main() {
     // Create an instance of KinematicsKUKAiiwa
     KinematicsKUKAiiwa KUKAKinematics(0.01, static_cast<size_t>(7), YMatrix::identity(4)); // Sampling time 10ms, 7 DOF, HTM of EE to TCP as identity matrix
     
-    // Set QP - parameters
     KUKAKinematics.setControlGains(1.0, 1.0);
-    KUKAKinematics.setQPWeights(1.0, 0.1, 0.01);
+    KUKAKinematics.setDLSDamping(0.01);
 
     // Set joint limits
     std::vector<double> q_min = {-2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI, -2*M_PI};
@@ -28,7 +27,7 @@ int main() {
     YMatrix target_HTM = current_HTM;
     target_HTM[0][3] += 10.0;
     
-    std::cout << "=== QP-based Inverse Kinematics Results ===" << std::endl;
+    std::cout << "=== DLS-based Inverse Kinematics Results ===" << std::endl;
     KUKAKinematics.printPose(current_HTM, "Initial");
     KUKAKinematics.printPose(target_HTM, "Target");
     

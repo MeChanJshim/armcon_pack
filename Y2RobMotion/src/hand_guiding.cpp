@@ -48,7 +48,7 @@ void robot_motion::control_guiding()
     target_HTM[1][3] = target_pose[1]; // mm unit
     target_HTM[2][3] = target_pose[2]; // mm unit
 
-    /* Inverse kinematics using QP-solver + execution */
+    /* Inverse kinematics using DLS solver + execution */
     target_angles = solve_IK(target_angles, target_HTM);
 
     /* Data upload to past */

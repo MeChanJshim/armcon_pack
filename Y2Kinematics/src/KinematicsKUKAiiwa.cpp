@@ -3,9 +3,8 @@
 KinematicsKUKAiiwa::KinematicsKUKAiiwa(double SamplingTime_, size_t numOfAxis_, const YMatrix& EE2TCP_) 
 : Kinematics(SamplingTime_, numOfAxis_, EE2TCP_) 
 {
-    // Set QP - parameters
     setControlGains(1.0, 1.0);
-    setQPWeights(1.0, 0.1, 0.01);
+    setDLSDamping(0.01);
 
     // Set joint limits
     setJointLimits(q_min, q_max, qd_min, qd_max);

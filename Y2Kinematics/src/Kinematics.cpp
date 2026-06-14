@@ -32,9 +32,6 @@ YMatrix vectorToColumnMatrix(const std::vector<double>& values) {
 Kinematics::Kinematics(double SamplingTime_, size_t numOfAxis_, const YMatrix& EE2TCP_)
 : dt(SamplingTime_), numOfAxis(numOfAxis_), EE2TCP(EE2TCP_) {
 
-    // tolerance from precision
-    QP_tolerance = std::pow(10.0, -static_cast<double>(QP_precision));
-
     // Joint limits default
     q_min.assign(numOfAxis, -2.0 * M_PI);
     q_max.assign(numOfAxis,  2.0 * M_PI);
@@ -50,7 +47,7 @@ Kinematics::Kinematics(double SamplingTime_, size_t numOfAxis_, const YMatrix& E
     has_prev = false;
 }
 
-// Enhanced QP-based IK solver
+// Damped Least Squares IK solver
 std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
                                          const YMatrix& target_HTM_) {
 
@@ -68,8 +65,8 @@ std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
     // numeric rounding (optional)
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            current_HTM[i][j] = roundToNthDecimal(current_HTM[i][j], QP_precision);
-            target_HTM[i][j]  = roundToNthDecimal(target_HTM[i][j],  QP_precision);
+            current_HTM[i][j] = roundToNthDecimal(current_HTM[i][j], ik_precision);
+            target_HTM[i][j]  = roundToNthDecimal(target_HTM[i][j],  ik_precision);
         }
     }
 
@@ -129,61 +126,8 @@ std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
         }
     }
 
-    // 5) Solve IK with selected backend
-#if Y2_IK_SOLVER_MODE == Y2_IK_SOLVER_QP
-    YMatrix I   = YMatrix::identity(numOfAxis);
-    YMatrix JtJ = J.transpose() * J;
-
-    // H = 2*omega_p*I + 2*alpha*(J'J + lambda*I)^{-1}
-    YMatrix H1 = I * (2.0 * omega_p);
-
-    YMatrix J_metric     = JtJ + I * lambda;
-    YMatrix J_metric_inv = J_metric.inverse();
-    YMatrix H2 = J_metric_inv * (2.0 * alpha);
-
-    YMatrix H = H1 + H2;
-
-    // f = -2*omega_p*q_current
-    std::vector<double> f(numOfAxis, 0.0);
-    for (size_t i = 0; i < numOfAxis; ++i) {
-        f[i] = -2.0 * omega_p * q_current[i];
-    }
-
-    // Equality constraint: J*q_next = Delta_x_des + J*q_current
-    YMatrix q_mat = vectorToColumnMatrix(q_current);
-    YMatrix Jq = J * q_mat;
-
-    std::vector<double> beq(6, 0.0);
-    for (int i = 0; i < 6; ++i) {
-        beq[i] = Delta_x_des[i] + Jq[i][0];
-    }
-
-    QPSolver::QPResult result = qp_solver.solve(H, f, J, beq, lb, ub, QP_tolerance);
-
-    if (!result.success) {
-        std::cerr << "[QP FAILURE]\n";
-        std::cerr << "  exitflag     : " << result.exitflag << " (debug)\n";
-        std::cerr << "  status_val   : " << result.status << "\n";
-        if (!result.status_string.empty())
-            std::cerr << "  status_str   : " << result.status_string << "\n";
-        std::cerr << "  iter         : " << result.iter << "\n";
-        std::cerr << "  obj_val      : " << result.objective_value << "\n";
-
-        double min_width = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < numOfAxis; ++i) min_width = std::min(min_width, ub[i] - lb[i]);
-        std::cerr << "  min(ub-lb)   : " << min_width << "\n";
-
-        double dx_norm2 = 0.0;
-        for (double v : Delta_x_des) dx_norm2 += v*v;
-        std::cerr << "  ||Delta_x||  : " << std::sqrt(dx_norm2) << "\n";
-        std::cerr << "  has_prev     : " << (has_prev ? 1 : 0) << "\n";
-        std::cerr << "---------------------------------\n";
-
-        return q_current;
-    }
-
-#elif Y2_IK_SOLVER_MODE == Y2_IK_SOLVER_DLS
-    const double damping = std::max(std::abs(lambda), 1e-9);
+    // 5) DLS: dq = J' * inv(J*J' + damping^2*I) * dx
+    const double damping = std::max(std::abs(dls_damping), 1e-9);
     YMatrix task_metric = (J * J.transpose()) + (YMatrix::identity(6) * (damping * damping));
     YMatrix delta_q_mat = J.transpose() * task_metric.inverse() * vectorToColumnMatrix(Delta_x_des);
 
@@ -193,19 +137,12 @@ std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
     }
 
     q_next = clampToBounds(q_next, lb, ub);
-#else
-#error "Unsupported Y2_IK_SOLVER_MODE"
-#endif
 
-    // 7) Update history
+    // 6) Update history
     q_prev = q_current;
     has_prev = true;
 
-#if Y2_IK_SOLVER_MODE == Y2_IK_SOLVER_QP
-    return result.solution;
-#else
     return q_next;
-#endif
 }
 
 // Utility
@@ -219,10 +156,11 @@ void Kinematics::setControlGains(double kp_pos, double kp_rot) {
     Kp_rot = kp_rot;
 }
 
-void Kinematics::setQPWeights(double omega_p_val, double alpha_val, double lambda_val) {
-    omega_p = omega_p_val;
-    alpha   = alpha_val;
-    lambda  = lambda_val;
+void Kinematics::setDLSDamping(double damping) {
+    if (damping <= 0.0) {
+        throw std::invalid_argument("DLS damping must be positive");
+    }
+    dls_damping = damping;
 }
 
 void Kinematics::setJointLimits(const std::vector<double>& q_min_in,
