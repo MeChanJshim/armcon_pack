@@ -46,7 +46,7 @@ def main(verbose=True, simplify_expressions=False, export_txt=True):
     )
 
     if verbose:
-        print_verification(verified_transform, total_force)
+        print_verification("Kinematics", ver_a, ver_d, ver_th, ver_tq, verified_transform, total_force)
 
     output_txt = None
     if export_txt:

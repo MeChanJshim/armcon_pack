@@ -90,8 +90,9 @@ HTM_Jaco_Cal_Python/Kinematics_KUKAiiwa7_HTM_Jacobian_cpp.txt
 HTM_Jaco_Cal_Python/Kinematics_HTM_Jacobian_cpp.txt
 ```
 
-Use the `T[...] = ...;` block in `forwardKinematics()` and the `J[...] = ...;`
-block in `calculateJacobian()`.
+The generated file contains complete paste blocks for `forwardKinematics()` and
+`calculateJacobian()`. Keep the target function's `q.size()` check, then replace
+the rest of the function body with the generated block.
 
 ## Requirements
 

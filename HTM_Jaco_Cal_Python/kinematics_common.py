@@ -34,7 +34,6 @@ def generate_kinematics(
 
     if verbose:
         print("Forward kinematics step done")
-        sp.printing.pprint(to[-1])
 
     origins = [transform[:3, 3] for transform in to]
     axis_z = [transform[:3, 2] for transform in to]
@@ -51,7 +50,6 @@ def generate_kinematics(
 
     if verbose:
         print("Jacobian step done")
-        sp.printing.pprint(jacobian)
 
     return tp, to, jacobian
 
@@ -72,17 +70,31 @@ def verify_kinematics(final_transform, jacobian, dh_a, dh_d, dh_th, ver_a, ver_d
     return verified_transform, verified_jacobian, total_force
 
 
-def print_verification(transform, total_force):
+def _format_numeric_list(values, precision=6):
+    return "[" + ", ".join(f"{float(sp.N(value)):.{precision}g}" for value in values) + "]"
+
+
+def print_verification(robot_name, ver_a, ver_d, ver_th, ver_tq, transform, total_force):
     position = transform[:3, 3]
-    print(
-        "X(mm): {:.1f}, Y(mm): {:.1f}, Z(mm): {:.1f} ".format(
-            float(position[0]), float(position[1]), float(position[2])
-        )
-    )
+    force = [total_force[i] / 1000 for i in range(3)]
+
+    print(f"=== {robot_name} verification ===")
+    print("Input:")
+    print(f"  a(mm)      = {_format_numeric_list(ver_a)}")
+    print(f"  d(mm)      = {_format_numeric_list(ver_d)}")
+    print(f"  theta(rad) = {_format_numeric_list(ver_th)}")
+    print(f"  torque(Nm) = {_format_numeric_list(ver_tq)}")
+    print("Result:")
+    print(f"  position(mm) = {_format_numeric_list(position, precision=4)}")
+    print(f"  force(N)     = {_format_numeric_list(force, precision=4)}")
 
 
 def _format_cpp_expr(expr):
-    return sp.ccode(expr).replace("M_PI", "pi")
+    code = sp.ccode(expr).replace("M_PI", "pi")
+    for index in range(10, 0, -1):
+        code = code.replace(f"sin(th{index})", f"s{index}")
+        code = code.replace(f"cos(th{index})", f"c{index}")
+    return code
 
 
 def _format_cpp_matrix_assignments(matrix, matrix_name):
@@ -93,6 +105,37 @@ def _format_cpp_matrix_assignments(matrix, matrix_name):
                 f"{matrix_name}[{row}][{col}] = {_format_cpp_expr(matrix[row, col])};"
             )
     return "\n".join(lines)
+
+
+def _format_joint_declarations(num_axes):
+    names = [f"th{i}" for i in range(1, num_axes + 1)]
+    assignments = [f"{name} = q[{i}]" for i, name in enumerate(names)]
+    lines = []
+    for start in range(0, len(assignments), 4):
+        lines.append("double " + ", ".join(assignments[start : start + 4]) + ";")
+    return "\n".join(lines)
+
+
+def _format_trig_declarations(num_axes):
+    lines = ["// Pre-calculate trigonometric functions"]
+    for index in range(1, num_axes + 1):
+        lines.append(f"double s{index} = sin(th{index}), c{index} = cos(th{index});")
+    return "\n".join(lines)
+
+
+def _format_cpp_function_block(matrix, matrix_name, return_line, num_axes):
+    return "\n".join(
+        [
+            _format_joint_declarations(num_axes),
+            "",
+            _format_trig_declarations(num_axes),
+            "",
+            f"YMatrix {matrix_name}({matrix.rows}, {matrix.cols if matrix_name == 'T' else 'numOfAxis'});",
+            _format_cpp_matrix_assignments(matrix, matrix_name),
+            "",
+            return_line,
+        ]
+    )
 
 
 def save_cpp_assignment_txt(
@@ -106,30 +149,23 @@ def save_cpp_assignment_txt(
     output_path = Path(output_path)
     htm = sp.simplify(final_transform) if simplify_expressions else final_transform
     jac = sp.simplify(jacobian) if simplify_expressions else jacobian
+    num_axes = jac.cols
 
     text = "\n".join(
         [
             f"// {robot_name} generated HTM and Jacobian",
-            "// Paste the T block inside forwardKinematics() after `YMatrix T(4, 4);`.",
-            "// Paste the J block inside calculateJacobian() after `YMatrix J(6, numOfAxis);`.",
+            "// Copy/paste-ready for Y2Kinematics robot classes.",
+            "// Replace the body after the q.size() check in each function.",
+            "// The blocks include q -> th declarations, s/c pre-calculation, YMatrix allocation, assignments, and return.",
             "",
-            "// ===== HTM / Forward Kinematics =====",
-            "YMatrix T(4, 4);",
-            _format_cpp_matrix_assignments(htm, "T"),
+            "// ===== forwardKinematics() paste block =====",
+            _format_cpp_function_block(htm, "T", "return T * EE2TCP;", num_axes),
             "",
-            "// ===== Jacobian =====",
-            f"YMatrix J({jac.rows}, numOfAxis);",
-            _format_cpp_matrix_assignments(jac, "J"),
+            "// ===== calculateJacobian() paste block =====",
+            _format_cpp_function_block(jac, "J", "return J;", num_axes),
             "",
         ]
     )
 
     output_path.write_text(text, encoding="utf-8")
     return output_path
-    print(
-        "Fx(N): {:.2f}, Fy(N): {:.2f}, Fz(N): {:.2f} ".format(
-            float(total_force[0] / 1000),
-            float(total_force[1] / 1000),
-            float(total_force[2] / 1000),
-        )
-    )
