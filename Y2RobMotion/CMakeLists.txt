@@ -8,8 +8,10 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Y2Matrix REQUIRED)
 find_package(Y2Kinematics REQUIRED)
@@ -17,7 +19,7 @@ find_package(Y2Trajectory REQUIRED)
 find_package(gforce_control REQUIRED)
 
 set(AMENT_DEP
-rclcpp sensor_msgs geometry_msgs
+rclcpp std_msgs sensor_msgs geometry_msgs ament_index_cpp
 Y2Matrix Y2Kinematics Y2Trajectory gforce_control
 )
 

@@ -82,7 +82,7 @@ install(PROGRAMS
 
 # === Export targets & dependencies === 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(rclcpp std_msgs std_srvs geometry_msgs Y2Filters Y2Matrix)
+ament_export_dependencies(rclcpp std_msgs std_srvs geometry_msgs ament_index_cpp Y2Filters Y2Matrix)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

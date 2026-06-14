@@ -97,10 +97,22 @@ block in `calculateJacobian()`.
 
 See [REQUIREMENTS.md](REQUIREMENTS.md) for the full installation list.
 
+For a clean environment rebuild, `apt`, `pip`, and `rosdep` cover the normal
+ROS/system dependencies. The following external artifacts must still be copied,
+installed, or sourced manually:
+
+```text
+LibTorch C++ distribution
+gforce_control TorchScript checkpoint: gforce.pt
+KUKA/LBR packages: lbr_fri_idl, lbr_fri_ros2
+NVIDIA Isaac Sim, only when using Isaac workflows
+```
+
 Required build/runtime APIs include:
 
 ```text
 ROS 2 Humble client libraries and message packages
+ROS 2 joy package for joystick input
 LibTorch C++ API for gforce_control
 yaml-cpp for runtime configuration
 Universal Robots ROS 2 driver for real UR robot operation

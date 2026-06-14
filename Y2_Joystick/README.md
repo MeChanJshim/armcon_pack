@@ -12,6 +12,7 @@ manual arm-control workflows.
 - `rclcpp`
 - `sensor_msgs`
 - `std_msgs`
+- `joy`
 - ROS 2 launch packages
 
 ## License
