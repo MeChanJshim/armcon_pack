@@ -2,7 +2,7 @@ Y2RobMotion:
   robot:
     name: ur10skku
     number_of_joints: 6
-    control_period: 0.008
+    control_period: 0.001
     package_bundle_dir: /home/jay/armcon_ws/src/armcon_pack
     trajectory_mode: 1  # 0: cmd_6D, 1: cmd_9D, 2: cmd_continue9D
     joint_names:
@@ -16,7 +16,7 @@ Y2RobMotion:
     ee_to_tcp:
       - [-1.0,  0.0,  0.0,  0.0]
       - [ 0.0,  1.0,  0.0,  0.0]
-      - [ 0.0,  0.0, -1.0,  153.0]
+      - [ 0.0,  0.0, -1.0,  0.0] # 153.0
       - [ 0.0,  0.0,  0.0,  1.0]
 
   ros:
@@ -38,6 +38,7 @@ Y2RobMotion:
       command_timeout: 0.3
     force:
       input_axis: 2
-      input_scale: 5.0
+      input_scale: 10.0
       target_axis: 2
       input_neutral: 1.0
+      deadband: 0.03

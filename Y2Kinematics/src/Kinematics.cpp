@@ -47,7 +47,7 @@ Kinematics::Kinematics(double SamplingTime_, size_t numOfAxis_, const YMatrix& E
     has_prev = false;
 }
 
-// Damped Least Squares IK solver
+// Bounded-iteration Damped Least Squares IK solver
 std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
                                          const YMatrix& target_HTM_) {
 
@@ -55,52 +55,21 @@ std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
         throw std::invalid_argument("solve_IK: q_current size mismatch");
     }
 
-    // 0) Align target to TCP frame
+    constexpr int max_iterations = 5;
+    constexpr double position_tolerance_mm = 0.05;
+    constexpr double rotation_tolerance_rad = 1.0e-4;
+    constexpr double max_delta_q_per_iteration = 0.03;
+
+    // 0) Align target to the TCP frame used by the Jacobian.
     YMatrix target_HTM = target_HTM_ * EE2TCP.inverse();
-
-    // 1) Current EE pose -> TCP
-    YMatrix current_HTM = forwardKinematics(q_current);
-    current_HTM = current_HTM * EE2TCP.inverse();
-
-    // numeric rounding (optional)
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            current_HTM[i][j] = roundToNthDecimal(current_HTM[i][j], ik_precision);
-            target_HTM[i][j]  = roundToNthDecimal(target_HTM[i][j],  ik_precision);
+            target_HTM[i][j] = roundToNthDecimal(target_HTM[i][j], ik_precision);
         }
     }
 
-    // 2) Pose error -> Delta_x_des (6)
-    std::vector<double> e_pos(3);
-    for (int i = 0; i < 3; ++i) e_pos[i] = target_HTM[i][3] - current_HTM[i][3];
-
-    YMatrix R_target  = target_HTM.extract(0, 0, 3, 3);
-    YMatrix R_current = current_HTM.extract(0, 0, 3, 3);
-    YMatrix R_err = R_target * R_current.transpose();
-
-    std::vector<double> e_rot(3);
-    e_rot[0] = 0.5 * (R_err[2][1] - R_err[1][2]);
-    e_rot[1] = 0.5 * (R_err[0][2] - R_err[2][0]);
-    e_rot[2] = 0.5 * (R_err[1][0] - R_err[0][1]);
-
-    std::vector<double> Delta_x_des(6);
-    for (int i = 0; i < 3; ++i) {
-        Delta_x_des[i]   = Kp_pos * e_pos[i];
-        Delta_x_des[i+3] = Kp_rot * e_rot[i];
-    }
-
-    // 3) Jacobian
-    YMatrix J = calculateJacobian(q_current);
-    if (J.rows() != 6 || J.cols() != numOfAxis) {
-        std::cerr << "[Kinematics] Jacobian size error: got "
-                  << J.rows() << "x" << J.cols()
-                  << ", expected 6x" << numOfAxis << "\n";
-        return q_current;
-    }
-
-    // 4) Bounds on q_next (angle/vel/acc intersection)
+    // 1) Bounds on q_next (angle/vel/acc intersection for this control tick).
     std::vector<double> lb(numOfAxis), ub(numOfAxis);
-
     for (size_t i = 0; i < numOfAxis; ++i) {
         const double lb_angle = q_min[i];
         const double ub_angle = q_max[i];
@@ -126,19 +95,75 @@ std::vector<double> Kinematics::solve_IK(const std::vector<double>& q_current,
         }
     }
 
-    // 5) DLS: dq = J' * inv(J*J' + damping^2*I) * dx
+    std::vector<double> q_next = clampToBounds(q_current, lb, ub);
     const double damping = std::max(std::abs(dls_damping), 1e-9);
-    YMatrix task_metric = (J * J.transpose()) + (YMatrix::identity(6) * (damping * damping));
-    YMatrix delta_q_mat = J.transpose() * task_metric.inverse() * vectorToColumnMatrix(Delta_x_des);
 
-    std::vector<double> q_next = q_current;
-    for (size_t i = 0; i < numOfAxis; ++i) {
-        q_next[i] += delta_q_mat[i][0];
+    for (int iteration = 0; iteration < max_iterations; ++iteration) {
+        YMatrix current_HTM = forwardKinematics(q_next) * EE2TCP.inverse();
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                current_HTM[i][j] = roundToNthDecimal(current_HTM[i][j], ik_precision);
+            }
+        }
+
+        std::vector<double> e_pos(3);
+        double pos_norm_sq = 0.0;
+        for (int i = 0; i < 3; ++i) {
+            e_pos[i] = target_HTM[i][3] - current_HTM[i][3];
+            pos_norm_sq += e_pos[i] * e_pos[i];
+        }
+
+        YMatrix R_target  = target_HTM.extract(0, 0, 3, 3);
+        YMatrix R_current = current_HTM.extract(0, 0, 3, 3);
+        YMatrix R_err = R_target * R_current.transpose();
+
+        std::vector<double> e_rot(3);
+        e_rot[0] = 0.5 * (R_err[2][1] - R_err[1][2]);
+        e_rot[1] = 0.5 * (R_err[0][2] - R_err[2][0]);
+        e_rot[2] = 0.5 * (R_err[1][0] - R_err[0][1]);
+        const double rot_norm_sq =
+            e_rot[0] * e_rot[0] + e_rot[1] * e_rot[1] + e_rot[2] * e_rot[2];
+
+        if (std::sqrt(pos_norm_sq) < position_tolerance_mm &&
+            std::sqrt(rot_norm_sq) < rotation_tolerance_rad) {
+            break;
+        }
+
+        std::vector<double> Delta_x_des(6);
+        for (int i = 0; i < 3; ++i) {
+            Delta_x_des[i]   = Kp_pos * e_pos[i];
+            Delta_x_des[i+3] = Kp_rot * e_rot[i];
+        }
+
+        YMatrix J = calculateJacobian(q_next);
+        if (J.rows() != 6 || J.cols() != numOfAxis) {
+            std::cerr << "[Kinematics] Jacobian size error: got "
+                      << J.rows() << "x" << J.cols()
+                      << ", expected 6x" << numOfAxis << "\n";
+            return q_current;
+        }
+
+        YMatrix task_metric = (J * J.transpose()) + (YMatrix::identity(6) * (damping * damping));
+        YMatrix delta_q_mat = J.transpose() * task_metric.inverse() * vectorToColumnMatrix(Delta_x_des);
+
+        double max_abs_delta = 0.0;
+        for (size_t i = 0; i < numOfAxis; ++i) {
+            const double delta_q = std::clamp(
+                delta_q_mat[i][0],
+                -max_delta_q_per_iteration,
+                max_delta_q_per_iteration);
+            q_next[i] += delta_q;
+            max_abs_delta = std::max(max_abs_delta, std::fabs(delta_q));
+        }
+
+        q_next = clampToBounds(q_next, lb, ub);
+
+        if (max_abs_delta < 1.0e-7) {
+            break;
+        }
     }
 
-    q_next = clampToBounds(q_next, lb, ub);
-
-    // 6) Update history
+    // 2) Update history.
     q_prev = q_current;
     has_prev = true;
 

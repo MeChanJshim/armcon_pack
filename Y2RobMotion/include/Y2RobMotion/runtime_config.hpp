@@ -10,7 +10,7 @@ struct RobotRuntimeConfig {
     int number_of_joints = 6;
     std::string package_bundle_dir = "/home/jay/armcon_ws/src";
     int trajectory_mode = 1;
-    double control_period = 0.008;
+    double control_period = 0.001;
     std::string robot_name = "ur10skku";
 
     bool test_mode = false;
@@ -33,6 +33,7 @@ struct RobotRuntimeConfig {
     double joystick_force_input_scale = 5.0;
     int joystick_force_target_axis = 2;
     double joystick_force_input_neutral = 1.0;
+    double joystick_force_deadband = 0.03;
 
     YMatrix ee_to_tcp = {
         {-1.0,  0.0,  0.0,  0.0 },
@@ -54,4 +55,3 @@ struct RobotRuntimeConfig {
 
 RobotRuntimeConfig loadRobotRuntimeConfig(const std::string& path);
 RobotRuntimeConfig loadInstalledRobotRuntimeConfig();
-

@@ -51,6 +51,7 @@ robot_motion::robot_motion(rclcpp::Node::SharedPtr node, const std::string& RB_n
     joy_force_input_scale_ = runtime_config_.joystick_force_input_scale;
     joy_force_target_axis_ = runtime_config_.joystick_force_target_axis;
     joy_force_input_neutral_ = runtime_config_.joystick_force_input_neutral;
+    joy_force_deadband_ = runtime_config_.joystick_force_deadband;
     joint_names = runtime_config_.joint_names;
 
     /* Target HTM  init */
@@ -189,8 +190,10 @@ void robot_motion::joyMoveCB(const std_msgs::msg::Float64MultiArray::SharedPtr m
         joy_force_input_axis_ < static_cast<int>(joy_move_axes_.size())) {
         const double axis_delta =
             joy_force_input_neutral_ - joy_move_axes_[joy_force_input_axis_];
+        const double filtered_delta =
+            std::fabs(axis_delta) < joy_force_deadband_ ? 0.0 : axis_delta;
         joy_force_command_[joy_force_target_axis_] =
-            axis_delta * joy_force_input_scale_;
+            filtered_delta * joy_force_input_scale_;
     }
 }
 
@@ -411,22 +414,6 @@ void robot_motion::control_idling()
     {
         target_pose = current_pose;
         target_angles = current_angles;
-    }
-
-    if(control_mode == "Idling"){
-        std::vector<double> target_ori = {target_pose[3], target_pose[4], target_pose[5]};
-        auto target_rot = YMatrix::fromSpatialAngle(target_ori);
-
-        target_HTM = YMatrix::identity(4);
-        target_HTM.insert(0, 0, target_rot);
-        target_HTM[0][3] = target_pose[0];
-        target_HTM[1][3] = target_pose[1];
-        target_HTM[2][3] = target_pose[2];
-
-        auto current_HTM = forwardKinematics(target_angles);
-
-        target_angles = solve_IK(target_angles, target_HTM);
-        
     }
 
     pre_control_mode = control_mode;

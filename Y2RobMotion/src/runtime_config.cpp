@@ -99,6 +99,7 @@ RobotRuntimeConfig loadRobotRuntimeConfig(const std::string& path)
             loadScalarIfPresent(force, "input_scale", config.joystick_force_input_scale);
             loadScalarIfPresent(force, "target_axis", config.joystick_force_target_axis);
             loadScalarIfPresent(force, "input_neutral", config.joystick_force_input_neutral);
+            loadScalarIfPresent(force, "deadband", config.joystick_force_deadband);
         }
     }
 
@@ -110,4 +111,3 @@ RobotRuntimeConfig loadInstalledRobotRuntimeConfig()
     const std::string share_dir = ament_index_cpp::get_package_share_directory("Y2RobMotion");
     return loadRobotRuntimeConfig(share_dir + "/config/y2_rob_motion.yaml");
 }
-
