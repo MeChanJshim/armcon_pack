@@ -1,0 +1,57 @@
+experiment_name: cartesian_id
+excitation_type: sine_sweep
+axis: z
+samples_total: 230491
+samples_active: 221990
+pre_hold_sec: 2
+duration_sec: 111
+post_hold_sec: 2
+command_span: 10
+response_span: 11.6723
+span_gain: 1.16723
+mean_command: 676.844
+mean_response: 676.844
+mean_error_bias: 1.51107e-05
+bias_corrected: true
+rms_error_raw: 0.344497
+peak_abs_error_raw: 2.87266
+rms_error_bias_corrected: 0.344497
+peak_abs_error_bias_corrected: 2.87265
+sine_sweep:
+  - frequency_hz: 0.1
+    command_amplitude: 4.95006
+    response_amplitude: 4.94964
+    gain: 0.999915
+    phase_lag_rad: -0.0194626
+    phase_lag_deg: -1.11513
+  - frequency_hz: 0.2
+    command_amplitude: 4.95009
+    response_amplitude: 4.96767
+    gain: 1.00355
+    phase_lag_rad: -0.0278239
+    phase_lag_deg: -1.59419
+  - frequency_hz: 0.5
+    command_amplitude: 4.94976
+    response_amplitude: 5.08839
+    gain: 1.02801
+    phase_lag_rad: -0.0590337
+    phase_lag_deg: -3.38238
+  - frequency_hz: 1
+    command_amplitude: 4.95026
+    response_amplitude: 5.39241
+    gain: 1.08932
+    phase_lag_rad: -0.151242
+    phase_lag_deg: -8.6655
+  - frequency_hz: 2
+    command_amplitude: 4.95057
+    response_amplitude: 5.79546
+    gain: 1.17067
+    phase_lag_rad: -0.450788
+    phase_lag_deg: -25.8282
+estimated_dc_gain: 0.999915
+estimated_bandwidth_hz: -1
+estimated_natural_frequency_hz: 2.43456
+estimated_natural_frequency_rad_s: 15.2968
+estimated_damping_ratio: 0.48
+estimated_delay_sec: -0.0450726
+second_order_fit_cost: 3.66705e-05

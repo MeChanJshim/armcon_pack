@@ -1,0 +1,75 @@
+experiment_name: cartesian_id
+excitation_type: sine_sweep
+axis: z
+samples_total: 394215
+samples_active: 385640
+pre_hold_sec: 2
+duration_sec: 192.833
+post_hold_sec: 2
+command_span: 10
+response_span: 44.6027
+span_gain: 4.46027
+mean_command: 676.887
+mean_response: 676.883
+mean_error_bias: 0.00393015
+bias_corrected: true
+rms_error_raw: 1.37638
+peak_abs_error_raw: 26.9443
+rms_error_bias_corrected: 1.37638
+peak_abs_error_bias_corrected: 26.9404
+sine_sweep:
+  - frequency_hz: 0.1
+    command_amplitude: 4.98595
+    response_amplitude: 4.98556
+    gain: 0.999922
+    phase_lag_rad: -0.0186013
+    phase_lag_deg: -1.06577
+  - frequency_hz: 0.2
+    command_amplitude: 4.98591
+    response_amplitude: 5.00456
+    gain: 1.00374
+    phase_lag_rad: -0.0264079
+    phase_lag_deg: -1.51306
+  - frequency_hz: 0.5
+    command_amplitude: 4.98603
+    response_amplitude: 5.12176
+    gain: 1.02722
+    phase_lag_rad: -0.0549909
+    phase_lag_deg: -3.15075
+  - frequency_hz: 1
+    command_amplitude: 4.98571
+    response_amplitude: 5.43465
+    gain: 1.09005
+    phase_lag_rad: -0.145315
+    phase_lag_deg: -8.32596
+  - frequency_hz: 2
+    command_amplitude: 4.98556
+    response_amplitude: 5.80887
+    gain: 1.16514
+    phase_lag_rad: -0.434894
+    phase_lag_deg: -24.9176
+  - frequency_hz: 3
+    command_amplitude: 4.98563
+    response_amplitude: 5.62922
+    gain: 1.12909
+    phase_lag_rad: -0.73521
+    phase_lag_deg: -42.1244
+  - frequency_hz: 4
+    command_amplitude: 4.98469
+    response_amplitude: 5.17714
+    gain: 1.03861
+    phase_lag_rad: -1.00527
+    phase_lag_deg: -57.5976
+  - frequency_hz: 5
+    command_amplitude: 4.98539
+    response_amplitude: 3.29965
+    gain: 0.661865
+    phase_lag_rad: 1.6026
+    phase_lag_deg: 91.8221
+estimated_dc_gain: 0.999922
+estimated_bandwidth_hz: 4.88006
+estimated_natural_frequency_hz: 3.79296
+estimated_natural_frequency_rad_s: 23.8319
+estimated_damping_ratio: 0.48
+estimated_delay_sec: -0.0107686
+second_order_fit_cost: 0.00970397

@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+
+Y2SYS_ID/results/*.csv

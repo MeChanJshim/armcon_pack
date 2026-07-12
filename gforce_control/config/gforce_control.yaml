@@ -21,7 +21,7 @@ gforce_control:
     # Model lookup rule when explicit_model_path is empty:
     #   <package_root>/<root>/<profile>/<model_file_name>
     # Example:
-    #   /home/jay/armcon_ws/src/armcon_pack/gforce_control/checkpoints/ts_0p008_sen_ts_0p002/gforce.pt
+    #   /home/jay/armcon_ws/src/armcon_pack/gforce_control/checkpoints/ts_0p001_sen_ts_0p001/gforce.pt
     root: checkpoints
     profile: ts_0p001_sen_ts_0p001
     model_file_name: gforce.pt

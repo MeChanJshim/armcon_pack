@@ -42,7 +42,7 @@
 #define GRAVITY_COMPENSATION_MODE 1 // 0: Disabled, 1: Enabled
 
 /* Sensor IP/PORT */
-static const char* FT1_IP   = "192.168.0.100";
+static const char* FT1_IP   = "192.168.0.100"; // 192.168.0.44(ecan),192.168.0.100(ethernet)
 static const int   FT1_PORT = 8890;  // 4001: eCAN, 8890: Ethernet
 
 /* Sensor Message Input */

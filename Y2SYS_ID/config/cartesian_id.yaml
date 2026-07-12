@@ -1,0 +1,74 @@
+cartesian_excitation:
+  ros__parameters:
+    mode_topic: "/ur10skku/cmdMode"
+    command_topic: "/ur10skku/cmdMotion"
+    current_pose_topic: "/ur10skku/currentP"
+
+    excitation_type: "sine_sweep"   # step, sine, sine_sweep, chirp
+    axis: "z"                 # x, y, z, wx, wy, wz
+    amplitude: 5.0            # mm for x/y/z, rad for wx/wy/wz
+    frequency_hz: 0.5
+    frequencies_hz: [0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
+    cycles_per_frequency: 10.0
+    chirp_start_hz: 0.1
+    chirp_end_hz: 5.0
+
+    pre_hold_sec: 2.0
+    # For sine_sweep, duration_sec is computed automatically as:
+    # sum(cycles_per_frequency / frequency_hz).
+    duration_sec: 20.0
+    post_hold_sec: 2.0
+    # Cartesian command publish rate from Y2SYS_ID to Y2RobMotion.
+    # Match this to Y2RobMotion control_period when possible.
+    # Current Y2RobMotion default: control_period = 0.001 s -> 1000 Hz.
+    publish_rate_hz: 1000.0
+    mode_publish_count: 20
+    shutdown_on_finish: false
+
+response_recorder:
+  ros__parameters:
+    output_dir: "/home/jay/armcon_ws/src/armcon_pack/Y2SYS_ID/results"
+    experiment_name: "cartesian_id"
+    # CSV sampling rate. This should be at least as high as the expected
+    # response bandwidth and usually matches the simulator state publish rate.
+    # Current armsimul_pack default: publish_rate_hz = 1000 Hz.
+    record_rate_hz: 1000.0
+
+    command_pose_topic: "/ur10skku/cmdMotion"
+    current_pose_topic: "/ur10skku/currentP"
+    target_pose_topic: "/ur10skku/targetP"
+    current_joint_topic: "/ur10skku/currentJ"
+    target_joint_topic: "/ur10skku/targetJ"
+    joint_state_topic: "/armsimul/joint_states"
+    wrench_topic: "/armsimul/ee_wrench"
+
+online_metrics:
+  ros__parameters:
+    command_pose_topic: "/ur10skku/cmdMotion"
+    current_pose_topic: "/ur10skku/currentP"
+    axis: "z"
+    report_period_sec: 1.0
+
+system_id:
+  ros__parameters:
+    # Offline-style automatic analyzer. This node does not publish robot commands.
+    # It subscribes to command/current pose, computes ID metrics, writes a YAML
+    # result file, and optionally shuts down the Y2SYS_ID launch at the end.
+    command_pose_topic: "/ur10skku/cmdMotion"
+    current_pose_topic: "/ur10skku/currentP"
+    output_dir: "/home/jay/armcon_ws/src/armcon_pack/Y2SYS_ID/results"
+    experiment_name: "cartesian_id"
+
+    excitation_type: "sine_sweep"   # step, sine, sine_sweep, chirp
+    axis: "z"
+    frequency_hz: 0.5
+    frequencies_hz: [0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
+    cycles_per_frequency: 10.0
+    settling_cycles: 1.5
+    pre_hold_sec: 2.0
+    # For sine_sweep, duration_sec is computed automatically as:
+    # sum(cycles_per_frequency / frequency_hz).
+    duration_sec: 20.0
+    post_hold_sec: 2.0
+    finish_margin_sec: 0.5
+    auto_shutdown: true

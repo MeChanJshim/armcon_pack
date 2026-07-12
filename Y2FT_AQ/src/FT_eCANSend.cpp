@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     NRS_CAN_sender NRS_CAN;
 
     // IP / Port 설정
-    NRS_CAN.TCP_connect((char *)"192.168.0.44", 4001);
+    NRS_CAN.TCP_connect((char *)"192.168.0.42", 4001);
     NRS_CAN.CAN_sender_input();
     NRS_CAN.CAN_send();
 
