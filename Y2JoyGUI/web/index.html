@@ -318,8 +318,9 @@
       try {
         const response = await fetch('/api/status');
         const data = await response.json();
+        const namespace = data.topics?.mode?.replace(/\/cmdMode$/, '') || `/${data.robot_name}`;
         dot.classList.add('ok');
-        statusText.textContent = `${data.robot_name} connected`;
+        statusText.textContent = `Command server connected (${namespace})`;
       } catch (error) {
         dot.classList.remove('ok');
         statusText.textContent = 'Server unavailable';
