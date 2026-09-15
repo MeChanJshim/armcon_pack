@@ -269,6 +269,7 @@
     const groupsEl = document.getElementById('groups');
     const statusEl = document.getElementById('status');
     let processes = [];
+    const selectedOptions = {};
 
     async function getJson(path) {
       const response = await fetch(path);
@@ -396,7 +397,14 @@
           input.type = 'radio';
           input.name = `${item.id}-${key}`;
           input.value = choice.value;
-          input.checked = choice.value === option.default;
+          const currentValue = selectedOptions[item.id]?.[key] || option.default;
+          input.checked = choice.value === currentValue;
+          input.addEventListener('change', () => {
+            if (!selectedOptions[item.id]) {
+              selectedOptions[item.id] = {};
+            }
+            selectedOptions[item.id][key] = input.value;
+          });
           const text = document.createElement('span');
           text.textContent = choice.label;
           label.append(input, text);
@@ -421,6 +429,7 @@
           selected[key] = input.value;
         }
       });
+      selectedOptions[item.id] = {...selectedOptions[item.id], ...selected};
       return selected;
     }
 
