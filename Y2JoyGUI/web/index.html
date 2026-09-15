@@ -63,6 +63,19 @@
       white-space: nowrap;
     }
 
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tool-button {
+      min-height: 34px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
     .dot {
       width: 10px;
       height: 10px;
@@ -244,7 +257,10 @@
   <main>
     <header>
       <h1>Y2JoyGUI</h1>
-      <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting</span></div>
+      <div class="header-tools">
+        <button id="openNodes" class="tool-button" type="button">Nodes</button>
+        <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting</span></div>
+      </div>
     </header>
 
     <div class="layout">
@@ -284,6 +300,7 @@
     const statusText = document.getElementById('statusText');
     const dot = document.getElementById('dot');
     const axisList = document.getElementById('axisList');
+    const openNodes = document.getElementById('openNodes');
     const neutralAxes = [0, 0, 1, 0, 0, 0, 0, 0];
     const axisValues = [...neutralAxes];
     const axisMeta = [
@@ -300,6 +317,13 @@
     function setLog(message) {
       logEl.textContent = message;
     }
+
+    openNodes.addEventListener('click', () => {
+      const opened = window.open('/nodes.html', 'Y2JoyGUINodes', 'popup,width=1180,height=820');
+      if (!opened) {
+        window.location.href = '/nodes.html';
+      }
+    });
 
     async function postJson(path, payload) {
       const response = await fetch(path, {
