@@ -227,6 +227,26 @@
       line-height: 1.45;
     }
 
+    .node-panel {
+      display: none;
+      margin-top: 14px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .node-panel.visible {
+      display: block;
+    }
+
+    .node-frame {
+      display: block;
+      width: 100%;
+      height: min(820px, calc(100vh - 80px));
+      min-height: 620px;
+      border: 0;
+      background: var(--bg);
+    }
+
     @media (max-width: 760px) {
       header,
       .layout {
@@ -249,6 +269,15 @@
       .axis {
         grid-template-columns: 1fr;
         gap: 6px;
+      }
+
+      .header-tools {
+        align-items: flex-start;
+        margin-top: 12px;
+      }
+
+      .node-frame {
+        min-height: 720px;
       }
     }
   </style>
@@ -293,6 +322,10 @@
         <button id="zeroAxes" type="button">Neutral Axes</button>
       </div>
     </section>
+
+    <section id="nodePanel" class="node-panel" aria-label="Node runner">
+      <iframe id="nodeFrame" class="node-frame" title="Y2JoyGUI Nodes"></iframe>
+    </section>
   </main>
 
   <script>
@@ -301,6 +334,8 @@
     const dot = document.getElementById('dot');
     const axisList = document.getElementById('axisList');
     const openNodes = document.getElementById('openNodes');
+    const nodePanel = document.getElementById('nodePanel');
+    const nodeFrame = document.getElementById('nodeFrame');
     const neutralAxes = [0, 0, 1, 0, 0, 0, 0, 0];
     const axisValues = [...neutralAxes];
     const axisMeta = [
@@ -319,9 +354,10 @@
     }
 
     openNodes.addEventListener('click', () => {
-      const opened = window.open('/nodes.html', 'Y2JoyGUINodes', 'popup,width=1180,height=820');
-      if (!opened) {
-        window.location.href = '/nodes.html';
+      const isVisible = nodePanel.classList.toggle('visible');
+      openNodes.textContent = isVisible ? 'Hide Nodes' : 'Nodes';
+      if (isVisible && !nodeFrame.src) {
+        nodeFrame.src = '/nodes.html';
       }
     });
 
