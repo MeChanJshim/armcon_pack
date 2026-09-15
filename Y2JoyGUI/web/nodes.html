@@ -270,6 +270,7 @@
     const statusEl = document.getElementById('status');
     let processes = [];
     const selectedOptions = {};
+    const openLogs = {};
 
     async function getJson(path) {
       const response = await fetch(path);
@@ -352,6 +353,10 @@
           actions.append(start, stop);
 
           const details = document.createElement('details');
+          details.open = Boolean(openLogs[item.id]);
+          details.addEventListener('toggle', () => {
+            openLogs[item.id] = details.open;
+          });
           const summary = document.createElement('summary');
           summary.textContent = 'Recent log';
           const log = document.createElement('pre');
