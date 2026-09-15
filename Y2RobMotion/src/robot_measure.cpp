@@ -31,6 +31,23 @@ constexpr char RECORD_STOP_TOPIC[]  = "/ur10skku/record_boolean_L";
 
 enum class Mode { Continuous, Discrete };
 
+namespace
+{
+constexpr double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
+
+void writePoseWithDegreeOrientation(
+    std::ofstream& file,
+    const std::array<double, 6>& pose)
+{
+    for (int i = 0; i < 6; ++i) {
+        const double value = (i >= 3) ? pose[i] * RAD_TO_DEG : pose[i];
+        file << value << "\t";
+    }
+    file << "\n";
+    file.flush();
+}
+}  // namespace
+
 class UrMeasure : public rclcpp::Node
 {
 public:
@@ -249,8 +266,8 @@ bool UrMeasure::initializeFiles()
         }
 
         // Precision
-        cp_file_->precision(3);   cj_file_->precision(3);   cf_file_->precision(3);   cmdk_file_->precision(3);
-        tp_file_->precision(3);   tj_file_->precision(3);   tf_file_->precision(3);
+        cp_file_->precision(1);   cj_file_->precision(1);   cf_file_->precision(1);   cmdk_file_->precision(1);
+        tp_file_->precision(1);   tj_file_->precision(1);   tf_file_->precision(1);
 
         cp_file_->setf(std::ios::fixed);   cj_file_->setf(std::ios::fixed);   cf_file_->setf(std::ios::fixed);   cmdk_file_->setf(std::ios::fixed);
         tp_file_->setf(std::ios::fixed);   tj_file_->setf(std::ios::fixed);   tf_file_->setf(std::ios::fixed);
@@ -398,8 +415,7 @@ void UrMeasure::writeDiscreteSnapshot()
         *cj_file_ << "\n"; cj_file_->flush();
     }
     if (cp_file_ && cp_file_->is_open() && have_cp_) {
-        for (int i = 0; i < 6; ++i) *cp_file_ << last_cp_[i] << "\t";
-        *cp_file_ << "\n"; cp_file_->flush();
+        writePoseWithDegreeOrientation(*cp_file_, last_cp_);
     }
     if (cf_file_ && cf_file_->is_open() && have_cf_) {
         for (int i = 0; i < 6; ++i) *cf_file_ << last_cf_[i] << "\t";
@@ -416,8 +432,7 @@ void UrMeasure::writeDiscreteSnapshot()
         *tj_file_ << "\n"; tj_file_->flush();
     }
     if (tp_file_ && tp_file_->is_open() && have_tp_) {
-        for (int i = 0; i < 6; ++i) *tp_file_ << last_tp_[i] << "\t";
-        *tp_file_ << "\n"; tp_file_->flush();
+        writePoseWithDegreeOrientation(*tp_file_, last_tp_);
     }
     if (tf_file_ && tf_file_->is_open() && have_tf_) {
         for (int i = 0; i < 6; ++i) *tf_file_ << last_tf_[i] << "\t";
@@ -452,8 +467,7 @@ void UrMeasure::timerCallback()
         *cj_file_ << "\n"; cj_file_->flush();
     }
     if (cp_file_ && cp_file_->is_open() && have_cp_) {
-        for (int i = 0; i < 6; ++i) *cp_file_ << last_cp_[i] << "\t";
-        *cp_file_ << "\n"; cp_file_->flush();
+        writePoseWithDegreeOrientation(*cp_file_, last_cp_);
     }
     if (cf_file_ && cf_file_->is_open() && have_cf_) {
         for (int i = 0; i < 6; ++i) *cf_file_ << last_cf_[i] << "\t";
@@ -469,8 +483,7 @@ void UrMeasure::timerCallback()
         *tj_file_ << "\n"; tj_file_->flush();
     }
     if (tp_file_ && tp_file_->is_open() && have_tp_) {
-        for (int i = 0; i < 6; ++i) *tp_file_ << last_tp_[i] << "\t";
-        *tp_file_ << "\n"; tp_file_->flush();
+        writePoseWithDegreeOrientation(*tp_file_, last_tp_);
     }
     if (tf_file_ && tf_file_->is_open() && have_tf_) {
         for (int i = 0; i < 6; ++i) *tf_file_ << last_tf_[i] << "\t";
