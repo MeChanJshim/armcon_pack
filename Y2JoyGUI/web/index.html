@@ -164,7 +164,7 @@
 
     .axis {
       display: grid;
-      grid-template-columns: 42px minmax(0, 1fr) 54px;
+      grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) 54px;
       align-items: center;
       gap: 10px;
       min-height: 32px;
@@ -175,6 +175,18 @@
       color: var(--muted);
       font-size: 13px;
       font-variant-numeric: tabular-nums;
+    }
+
+    .axis label {
+      display: grid;
+      gap: 2px;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .axis small {
+      color: var(--muted);
+      font-size: 11px;
     }
 
     input[type="range"] {
@@ -220,6 +232,11 @@
       .record-row {
         grid-template-columns: 1fr;
       }
+
+      .axis {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
     }
   </style>
 </head>
@@ -257,7 +274,7 @@
       <div id="axisList" class="axis-list"></div>
       <div class="actions">
         <button id="sendAxes" type="button">Send Axes</button>
-        <button id="zeroAxes" type="button">Zero Axes</button>
+        <button id="zeroAxes" type="button">Neutral Axes</button>
       </div>
     </section>
   </main>
@@ -267,7 +284,18 @@
     const statusText = document.getElementById('statusText');
     const dot = document.getElementById('dot');
     const axisList = document.getElementById('axisList');
-    const axisValues = Array(8).fill(0);
+    const neutralAxes = [0, 0, 1, 0, 0, 0, 0, 0];
+    const axisValues = [...neutralAxes];
+    const axisMeta = [
+      {name: 'Wy rotation', detail: 'Axis 0 -> Wy, 0.2 rad/s'},
+      {name: 'Wx rotation', detail: 'Axis 1 -> Wx, 0.2 rad/s'},
+      {name: 'Fz force', detail: 'Axis 2 -> Fz, neutral 1.0'},
+      {name: 'Y move', detail: 'Axis 3 -> Y, 20 mm/s'},
+      {name: 'X move', detail: 'Axis 4 -> X, 20 mm/s'},
+      {name: 'Unused', detail: 'Axis 5 is not mapped'},
+      {name: 'Wz rotation', detail: 'Axis 6 -> Wz, 0.2 rad/s'},
+      {name: 'Z move', detail: 'Axis 7 -> Z, 20 mm/s'}
+    ];
 
     function setLog(message) {
       logEl.textContent = message;
@@ -305,7 +333,11 @@
         row.className = 'axis';
 
         const label = document.createElement('label');
-        label.textContent = `Axis ${index}`;
+        const title = document.createElement('span');
+        title.textContent = axisMeta[index].name;
+        const detail = document.createElement('small');
+        detail.textContent = axisMeta[index].detail;
+        label.append(title, detail);
 
         const input = document.createElement('input');
         input.type = 'range';
@@ -361,11 +393,13 @@
     });
 
     document.getElementById('zeroAxes').addEventListener('click', async () => {
-      axisValues.fill(0);
+      neutralAxes.forEach((value, index) => {
+        axisValues[index] = value;
+      });
       renderAxes();
       try {
         await postJson('/api/joy_move', {axes: axisValues});
-        setLog('Published zero axes');
+        setLog('Published neutral /joy_move axes');
       } catch (error) {
         setLog(error.message);
       }

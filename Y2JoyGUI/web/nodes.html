@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Y2JoyGUI Nodes</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #1b1d22;
+      --panel-2: #22252b;
+      --line: #353941;
+      --text: #f1f3f5;
+      --muted: #aab0bb;
+      --green: #36c275;
+      --amber: #f2b84b;
+      --red: #ff6868;
+      --blue: #4ba3ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 48px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 14px;
+      min-height: 22px;
+    }
+
+    .groups {
+      display: grid;
+      gap: 16px;
+    }
+
+    section {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      padding: 3px 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .pill.running {
+      color: var(--green);
+      border-color: rgba(54, 194, 117, 0.55);
+    }
+
+    .pill.stopped {
+      color: var(--muted);
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    code {
+      display: block;
+      min-height: 34px;
+      color: #c8d3df;
+      background: #15171b;
+      border: 1px solid #2d3138;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .options {
+      display: grid;
+      gap: 8px;
+      border: 1px solid #2d3138;
+      border-radius: 6px;
+      padding: 8px;
+      background: #191b20;
+    }
+
+    .option-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    .choice-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .choice-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .choice-row input {
+      margin: 0;
+      accent-color: var(--blue);
+    }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #292d34;
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: #95c7ff;
+    }
+
+    button.start {
+      color: var(--green);
+    }
+
+    button.stop {
+      color: var(--red);
+    }
+
+    button:disabled {
+      color: #6d7480;
+      cursor: not-allowed;
+    }
+
+    details {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    pre {
+      margin: 8px 0 0;
+      max-height: 160px;
+      overflow: auto;
+      color: #c8d3df;
+      background: #15171b;
+      border: 1px solid #2d3138;
+      border-radius: 6px;
+      padding: 8px;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 680px) {
+      header {
+        display: block;
+      }
+
+      header a {
+        display: inline-block;
+        margin-top: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Node Runner</h1>
+        <div class="status" id="status">Loading managed processes.</div>
+      </div>
+      <a href="/">Command GUI</a>
+    </header>
+
+    <div id="groups" class="groups"></div>
+  </main>
+
+  <script>
+    const groupsEl = document.getElementById('groups');
+    const statusEl = document.getElementById('status');
+    let processes = [];
+
+    async function getJson(path) {
+      const response = await fetch(path);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    async function postJson(path, payload) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    function groupBy(items, key) {
+      return items.reduce((acc, item) => {
+        const value = item[key] || 'Other';
+        acc[value] = acc[value] || [];
+        acc[value].push(item);
+        return acc;
+      }, {});
+    }
+
+    function render() {
+      const grouped = groupBy(processes, 'group');
+      groupsEl.innerHTML = '';
+
+      Object.keys(grouped).sort().forEach((group) => {
+        const section = document.createElement('section');
+        const title = document.createElement('h2');
+        title.textContent = group;
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        grouped[group].forEach((item) => {
+          const card = document.createElement('article');
+          card.className = 'item';
+
+          const top = document.createElement('div');
+          top.className = 'topline';
+          const name = document.createElement('h3');
+          name.textContent = item.name;
+          const pill = document.createElement('span');
+          pill.className = `pill ${item.running ? 'running' : 'stopped'}`;
+          pill.textContent = item.running ? `Running ${item.pid}` : 'Stopped';
+          top.append(name, pill);
+
+          const description = document.createElement('p');
+          description.textContent = item.description;
+
+          const command = document.createElement('code');
+          command.textContent = item.command;
+
+          const options = renderOptions(item);
+
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+
+          const start = document.createElement('button');
+          start.className = 'start';
+          start.textContent = 'Start';
+          start.disabled = item.running;
+          start.addEventListener('click', () => startProcess(item));
+
+          const stop = document.createElement('button');
+          stop.className = 'stop';
+          stop.textContent = 'Stop';
+          stop.disabled = !item.running;
+          stop.addEventListener('click', () => stopProcess(item));
+
+          actions.append(start, stop);
+
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = 'Recent log';
+          const log = document.createElement('pre');
+          log.textContent = item.log && item.log.length ? item.log.join('\n') : 'No output yet.';
+          details.append(summary, log);
+
+          card.append(top, description, command);
+          if (options) {
+            card.appendChild(options);
+          }
+          card.append(actions, details);
+          grid.appendChild(card);
+        });
+
+        section.append(title, grid);
+        groupsEl.appendChild(section);
+      });
+    }
+
+    function renderOptions(item) {
+      if (!item.options || Object.keys(item.options).length === 0) {
+        return null;
+      }
+
+      const panel = document.createElement('div');
+      panel.className = 'options';
+
+      Object.entries(item.options).forEach(([key, option]) => {
+        if (option.type !== 'choice') {
+          return;
+        }
+
+        const title = document.createElement('div');
+        title.className = 'option-title';
+        title.textContent = option.label || key;
+
+        const row = document.createElement('div');
+        row.className = 'choice-row';
+
+        option.choices.forEach((choice) => {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = `${item.id}-${key}`;
+          input.value = choice.value;
+          input.checked = choice.value === option.default;
+          const text = document.createElement('span');
+          text.textContent = choice.label;
+          label.append(input, text);
+          row.appendChild(label);
+        });
+
+        panel.append(title, row);
+      });
+
+      return panel;
+    }
+
+    function collectOptions(item) {
+      const selected = {};
+      if (!item.options) {
+        return selected;
+      }
+
+      Object.keys(item.options).forEach((key) => {
+        const input = document.querySelector(`input[name="${item.id}-${key}"]:checked`);
+        if (input) {
+          selected[key] = input.value;
+        }
+      });
+      return selected;
+    }
+
+    async function refresh() {
+      try {
+        const data = await getJson('/api/processes');
+        processes = data.processes;
+        statusEl.textContent = 'Managed process status is live.';
+        render();
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    }
+
+    async function startProcess(item) {
+      if (item.confirm && !confirm(`Start ${item.name}?\n\n${item.command}`)) {
+        return;
+      }
+
+      statusEl.textContent = `Starting ${item.name}.`;
+      try {
+        await postJson('/api/process/start', {id: item.id, options: collectOptions(item)});
+        await refresh();
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    }
+
+    async function stopProcess(item) {
+      statusEl.textContent = `Stopping ${item.name}.`;
+      try {
+        await postJson('/api/process/stop', {id: item.id});
+        await refresh();
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

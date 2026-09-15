@@ -13,6 +13,8 @@ ros2 launch Y2JoyGUI y2_joy_gui.launch.py
 
 Open `http://127.0.0.1:8080` in a browser.
 
+Open `http://127.0.0.1:8080/nodes.html` for the hidden node runner page.
+
 ## Published Topics
 
 - `/ur10skku/cmdMode` (`std_msgs/msg/String`)

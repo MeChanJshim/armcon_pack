@@ -16,6 +16,7 @@
 #include <array>
 #include <cctype>
 #include <algorithm>
+#include <string>
 
 constexpr char CP_PATH[]   = "/measured/currentP.txt";
 constexpr char CJ_PATH[]   = "/measured/currentJ.txt";
@@ -46,12 +47,19 @@ void writePoseWithDegreeOrientation(
     file << "\n";
     file.flush();
 }
+
+std::string normalizeMode(std::string mode)
+{
+    std::transform(mode.begin(), mode.end(), mode.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return mode;
+}
 }  // namespace
 
 class UrMeasure : public rclcpp::Node
 {
 public:
-    explicit UrMeasure(Mode mode, const RobotRuntimeConfig& config);
+    explicit UrMeasure(Mode mode, const RobotRuntimeConfig& config, bool enable_terminal_input = true);
     ~UrMeasure();
 
 private:
@@ -103,6 +111,7 @@ private:
     // Discrete mode trigger & input thread
     std::atomic<bool> snap_trigger_{false};
     std::atomic<bool> continuous_recording_active_{false};
+    bool enable_terminal_input_{true};
     std::thread input_thread_;
 
     // Callbacks
@@ -126,13 +135,14 @@ private:
 };
 
 // Constructor
-UrMeasure::UrMeasure(Mode mode, const RobotRuntimeConfig& config)
+UrMeasure::UrMeasure(Mode mode, const RobotRuntimeConfig& config, bool enable_terminal_input)
     : Node("ur_measure_node"),
       config_(config),
       robot_name_(config.robot_name),
       mode_(mode),
       number_of_joints_(config.number_of_joints),
       measure_period_(config.control_period * 5.0),
+      enable_terminal_input_(enable_terminal_input),
       package_path_(config.package_bundle_dir + "/Y2RobMotion"),
       last_cj_(static_cast<std::size_t>(config.number_of_joints), 0.0),
       last_tj_(static_cast<std::size_t>(config.number_of_joints), 0.0)
@@ -198,17 +208,31 @@ UrMeasure::UrMeasure(Mode mode, const RobotRuntimeConfig& config)
     if (mode_ == Mode::Continuous) {
         RCLCPP_INFO(this->get_logger(), "\033[32mRecording ready (CONTINUOUS @ MEASURE_PERIOD)\033[0m");
         RCLCPP_INFO(this->get_logger(), "Logging frequency: %.1f Hz", 1.0 / measure_period_);
-        RCLCPP_INFO(this->get_logger(),
-                    "Press ENTER or publish true to %s to start. Type -1 then ENTER or publish true to %s to stop.",
-                    RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        if (enable_terminal_input_) {
+            RCLCPP_INFO(this->get_logger(),
+                        "Press ENTER or publish true to %s to start. Type -1 then ENTER or publish true to %s to stop.",
+                        RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        } else {
+            RCLCPP_INFO(this->get_logger(),
+                        "Publish true to %s to start. Publish true to %s to stop.",
+                        RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        }
     } else {
         RCLCPP_INFO(this->get_logger(), "\033[33mRecording ready (DISCRETE)\033[0m");
-        RCLCPP_INFO(this->get_logger(),
-                    "Press ENTER or publish true to %s to snapshot; type -1 then ENTER or publish true to %s to exit.",
-                    RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        if (enable_terminal_input_) {
+            RCLCPP_INFO(this->get_logger(),
+                        "Press ENTER or publish true to %s to snapshot; type -1 then ENTER or publish true to %s to exit.",
+                        RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        } else {
+            RCLCPP_INFO(this->get_logger(),
+                        "Publish true to %s to snapshot. Publish true to %s to exit.",
+                        RECORD_START_TOPIC, RECORD_STOP_TOPIC);
+        }
     }
 
-    startInputThread();
+    if (enable_terminal_input_) {
+        startInputThread();
+    }
 
     RCLCPP_INFO(this->get_logger(), "UrMeasure node initialized for robot: %s", robot_name_.c_str());
 }
@@ -501,32 +525,61 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
 
-    // Startup mode selection (stdin)
-    std::cout << "Select mode: (c) continuous, (d) discrete > ";
-    std::string mode_input;
-    std::getline(std::cin, mode_input);
+    auto option_node = std::make_shared<rclcpp::Node>("ur_measure_options");
+    const std::string configured_mode = normalizeMode(
+        option_node->declare_parameter<std::string>("mode", ""));
+    option_node.reset();
 
     Mode mode = Mode::Continuous;
-    if (!mode_input.empty() && (std::tolower(static_cast<unsigned char>(mode_input[0])) == 'd')) {
+    bool enable_terminal_input = configured_mode.empty();
+    if (configured_mode == "continuous" || configured_mode == "c") {
+        mode = Mode::Continuous;
+        std::cout << "Selected mode from ROS parameter: continuous\n";
+    } else if (configured_mode == "discrete" || configured_mode == "d") {
         mode = Mode::Discrete;
+        std::cout << "Selected mode from ROS parameter: discrete\n";
+    } else {
+        if (!configured_mode.empty()) {
+            std::cout << "Unknown mode parameter '" << configured_mode
+                      << "'. Falling back to terminal selection.\n";
+        }
+
+        // Startup mode selection (stdin)
+        std::cout << "Select mode: (c) continuous, (d) discrete > ";
+        std::string mode_input;
+        std::getline(std::cin, mode_input);
+
+        if (!mode_input.empty() &&
+            (std::tolower(static_cast<unsigned char>(mode_input[0])) == 'd')) {
+            mode = Mode::Discrete;
+        }
     }
 
     try {
         const auto config = loadInstalledRobotRuntimeConfig();
-        auto measure_node = std::make_shared<UrMeasure>(mode, config);
+        auto measure_node = std::make_shared<UrMeasure>(mode, config, enable_terminal_input);
 
         rclcpp::executors::MultiThreadedExecutor executor;
         executor.add_node(measure_node);
 
         if (mode == Mode::Discrete) {
-            std::cout << "[Discrete] Press ENTER to record a snapshot.\n"
-                         "[Discrete] Publish true to " << RECORD_START_TOPIC << " to record a snapshot.\n"
-                      << "[Discrete] Type -1 then ENTER or publish true to " << RECORD_STOP_TOPIC << " to exit.\n";
+            if (enable_terminal_input) {
+                std::cout << "[Discrete] Press ENTER to record a snapshot.\n"
+                             "[Discrete] Publish true to " << RECORD_START_TOPIC << " to record a snapshot.\n"
+                          << "[Discrete] Type -1 then ENTER or publish true to " << RECORD_STOP_TOPIC << " to exit.\n";
+            } else {
+                std::cout << "[Discrete] Publish true to " << RECORD_START_TOPIC
+                          << " to record a snapshot.\n"
+                          << "[Discrete] Publish true to " << RECORD_STOP_TOPIC << " to exit.\n";
+            }
         } else {
             std::cout << "[Continuous] Logging at MEASURE_PERIOD = " << (config.control_period * 5.0)
                       << " sec (" << (1.0 / (config.control_period * 5.0)) << " Hz)\n"
-                      << "[Continuous] Press ENTER or publish true to " << RECORD_START_TOPIC << " to start.\n"
-                      << "[Continuous] Type -1 then ENTER or publish true to " << RECORD_STOP_TOPIC << " to exit.\n";
+                      << "[Continuous] Publish true to " << RECORD_START_TOPIC << " to start.\n"
+                      << "[Continuous] Publish true to " << RECORD_STOP_TOPIC << " to exit.\n";
+            if (enable_terminal_input) {
+                std::cout << "[Continuous] Press ENTER to start, or type -1 then ENTER to exit.\n";
+            }
         }
 
         executor.spin();
