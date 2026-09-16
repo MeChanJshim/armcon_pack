@@ -289,6 +289,7 @@
       <div class="header-tools">
         <button id="openNodes" class="tool-button" type="button">Nodes</button>
         <button id="openPath" class="tool-button" type="button">Path</button>
+        <button id="openMeasured" class="tool-button" type="button">Measured</button>
         <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting</span></div>
       </div>
     </header>
@@ -331,6 +332,10 @@
     <section id="pathPanel" class="node-panel" aria-label="Path editor">
       <iframe id="pathFrame" class="node-frame" title="Y2JoyGUI Path Editor"></iframe>
     </section>
+
+    <section id="measuredPanel" class="node-panel" aria-label="Measured data viewer">
+      <iframe id="measuredFrame" class="node-frame" title="Y2JoyGUI Measured Data"></iframe>
+    </section>
   </main>
 
   <script>
@@ -340,10 +345,13 @@
     const axisList = document.getElementById('axisList');
     const openNodes = document.getElementById('openNodes');
     const openPath = document.getElementById('openPath');
+    const openMeasured = document.getElementById('openMeasured');
     const nodePanel = document.getElementById('nodePanel');
     const nodeFrame = document.getElementById('nodeFrame');
     const pathPanel = document.getElementById('pathPanel');
     const pathFrame = document.getElementById('pathFrame');
+    const measuredPanel = document.getElementById('measuredPanel');
+    const measuredFrame = document.getElementById('measuredFrame');
     const neutralAxes = [0, 0, 1, 0, 0, 0, 0, 0];
     const axisValues = [...neutralAxes];
     const axisMeta = [
@@ -369,7 +377,9 @@
       }
       if (isVisible) {
         pathPanel.classList.remove('visible');
+        measuredPanel.classList.remove('visible');
         openPath.textContent = 'Path';
+        openMeasured.textContent = 'Measured';
       }
     });
 
@@ -381,7 +391,23 @@
       }
       if (isVisible) {
         nodePanel.classList.remove('visible');
+        measuredPanel.classList.remove('visible');
         openNodes.textContent = 'Nodes';
+        openMeasured.textContent = 'Measured';
+      }
+    });
+
+    openMeasured.addEventListener('click', () => {
+      const isVisible = measuredPanel.classList.toggle('visible');
+      openMeasured.textContent = isVisible ? 'Hide Measured' : 'Measured';
+      if (isVisible) {
+        measuredFrame.src = `/measured.html?v=${Date.now()}`;
+      }
+      if (isVisible) {
+        nodePanel.classList.remove('visible');
+        pathPanel.classList.remove('visible');
+        openNodes.textContent = 'Nodes';
+        openPath.textContent = 'Path';
       }
     });
 

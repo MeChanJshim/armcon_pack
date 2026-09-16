@@ -42,6 +42,7 @@ class Y2JoyGuiNode(Node):
         self.allowed_modes = {"Idling", "Guiding", "Joystick", "Joystick_force"}
         self.web_dir = Path(get_package_share_directory("Y2JoyGUI")) / "web"
         self.path_files = self.find_path_files()
+        self.measured_files = self.find_measured_files()
         self.server = None
         self.server_thread = None
         self.process_lock = threading.Lock()
@@ -99,6 +100,22 @@ class Y2JoyGuiNode(Node):
                     self.write_json({
                         "ok": True,
                         "path": node.read_path_file(path_type),
+                    })
+                    return
+
+                if parsed.path == "/api/measured/list":
+                    self.write_json({
+                        "ok": True,
+                        "files": node.measured_file_status(),
+                    })
+                    return
+
+                if parsed.path == "/api/measured/read":
+                    query = parse_qs(parsed.query)
+                    file_id = query.get("file", [""])[0]
+                    self.write_json({
+                        "ok": True,
+                        "measured": node.read_measured_file(file_id),
                     })
                     return
 
@@ -199,6 +216,8 @@ class Y2JoyGuiNode(Node):
             f"Y2JoyGUI node runner: http://127.0.0.1:{self.port}/nodes.html")
         self.get_logger().info(
             f"Y2JoyGUI path editor: http://127.0.0.1:{self.port}/path.html")
+        self.get_logger().info(
+            f"Y2JoyGUI measured viewer: http://127.0.0.1:{self.port}/measured.html")
         return True
 
     def publish_mode(self, mode):
@@ -266,6 +285,65 @@ class Y2JoyGuiNode(Node):
             },
         }
 
+    def find_measured_files(self):
+        measured_dir = None
+        try:
+            config_path = (
+                Path(get_package_share_directory("Y2RobMotion"))
+                / "config"
+                / "y2_rob_motion.yaml"
+            )
+            package_bundle_dir = self.read_package_bundle_dir(config_path)
+            if package_bundle_dir:
+                candidate = Path(package_bundle_dir) / "Y2RobMotion" / "measured"
+                if candidate.exists():
+                    measured_dir = candidate
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warn(f"Could not resolve Y2RobMotion measured dir from config: {exc}")
+
+        if measured_dir is None:
+            measured_dir = (
+                Path.home() / "armcon_ws" / "src" / "armcon_pack" / "Y2RobMotion" / "measured"
+            )
+
+        return {
+            "currentP": {
+                "file": measured_dir / "currentP.txt",
+                "columns": ["x", "y", "z", "wx", "wy", "wz"],
+                "units": ["mm", "mm", "mm", "deg", "deg", "deg"],
+            },
+            "targetP": {
+                "file": measured_dir / "targetP.txt",
+                "columns": ["x", "y", "z", "wx", "wy", "wz"],
+                "units": ["mm", "mm", "mm", "deg", "deg", "deg"],
+            },
+            "currentJ": {
+                "file": measured_dir / "currentJ.txt",
+                "columns": ["j1", "j2", "j3", "j4", "j5", "j6"],
+                "units": ["rad", "rad", "rad", "rad", "rad", "rad"],
+            },
+            "targetJ": {
+                "file": measured_dir / "targetJ.txt",
+                "columns": ["j1", "j2", "j3", "j4", "j5", "j6"],
+                "units": ["rad", "rad", "rad", "rad", "rad", "rad"],
+            },
+            "currentF": {
+                "file": measured_dir / "currentF.txt",
+                "columns": ["fx", "fy", "fz", "tx", "ty", "tz"],
+                "units": ["N", "N", "N", "Nm", "Nm", "Nm"],
+            },
+            "targetF": {
+                "file": measured_dir / "targetF.txt",
+                "columns": ["fx", "fy", "fz", "tx", "ty", "tz"],
+                "units": ["N", "N", "N", "Nm", "Nm", "Nm"],
+            },
+            "currentMDK": {
+                "file": measured_dir / "currentMDK.txt",
+                "columns": ["m", "d", "k"],
+                "units": ["", "", ""],
+            },
+        }
+
     def read_package_bundle_dir(self, config_path):
         if not config_path.exists():
             return None
@@ -275,6 +353,51 @@ class Y2JoyGuiNode(Node):
             if stripped.startswith("package_bundle_dir:"):
                 return stripped.split(":", 1)[1].strip().strip("'\"")
         return None
+
+    def measured_file_status(self):
+        files = []
+        for file_id, spec in self.measured_files.items():
+            file_path = spec["file"]
+            rows = 0
+            if file_path.exists():
+                with file_path.open("r", encoding="utf-8") as handle:
+                    rows = sum(1 for line in handle if line.strip())
+            files.append({
+                "id": file_id,
+                "file": str(file_path),
+                "columns": spec["columns"],
+                "units": spec["units"],
+                "exists": file_path.exists(),
+                "rows": rows,
+            })
+        return files
+
+    def measured_spec(self, file_id):
+        spec = self.measured_files.get(file_id)
+        if spec is None:
+            raise ValueError(f"unsupported measured file: {file_id}")
+        return spec
+
+    def read_measured_file(self, file_id):
+        spec = self.measured_spec(file_id)
+        file_path = spec["file"]
+        if not file_path.exists():
+            raise ValueError(f"measured file does not exist: {file_path}")
+
+        rows = []
+        for line in file_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            rows.append(stripped.split())
+
+        return {
+            "id": file_id,
+            "file": str(file_path),
+            "columns": spec["columns"],
+            "units": spec["units"],
+            "rows": rows,
+        }
 
     def path_spec(self, path_type):
         normalized = path_type.upper()

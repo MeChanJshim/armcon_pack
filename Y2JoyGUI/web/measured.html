@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Y2JoyGUI Measured Data</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #1b1d22;
+      --panel-2: #22252b;
+      --line: #353941;
+      --text: #f1f3f5;
+      --muted: #aab0bb;
+      --blue: #4ba3ff;
+      --green: #36c275;
+      --focus: #95c7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    select,
+    button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    select {
+      min-width: 180px;
+      padding: 0 10px;
+    }
+
+    button {
+      padding: 0 13px;
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+    }
+
+    button:hover {
+      border-color: var(--focus);
+      background: #292d34;
+    }
+
+    button.active {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .read {
+      color: var(--green);
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.visible {
+      display: block;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      max-height: 620px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 7px;
+      text-align: left;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #202329;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    th:first-child,
+    td:first-child {
+      width: 58px;
+      min-width: 58px;
+      text-align: right;
+      color: var(--muted);
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .cell {
+      cursor: cell;
+      user-select: none;
+    }
+
+    .cell.selected {
+      background: rgba(75, 163, 255, 0.2);
+      outline: 1px solid var(--blue);
+      outline-offset: -1px;
+    }
+
+    .plot-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    .plot-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .plot-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--blue);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 440px;
+      background: #111318;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    @media (max-width: 760px) {
+      header {
+        display: block;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      select,
+      button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Measured Data</h1>
+      <div class="status" id="fileStatus">No file loaded.</div>
+    </header>
+
+    <div class="toolbar">
+      <select id="fileSelect" aria-label="Measured file"></select>
+      <button id="readMeasured" class="read" type="button">Read</button>
+      <button id="tableTab" class="active" type="button">Table</button>
+      <button id="plotTab" type="button">Plot</button>
+    </div>
+
+    <div class="status" id="status">Ready.</div>
+
+    <section id="tablePanel" class="panel visible">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="headerRow"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="plotPanel" class="panel">
+      <div class="plot-panel">
+        <div id="plotControls" class="plot-controls"></div>
+        <canvas id="plotCanvas" width="1120" height="440"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const colors = ['#4ba3ff', '#36c275', '#f2b84b', '#ff6868', '#b38cff', '#62d6d6'];
+    const fileSelect = document.getElementById('fileSelect');
+    const fileStatus = document.getElementById('fileStatus');
+    const statusEl = document.getElementById('status');
+    const headerRow = document.getElementById('headerRow');
+    const tableBody = document.getElementById('tableBody');
+    const tablePanel = document.getElementById('tablePanel');
+    const plotPanel = document.getElementById('plotPanel');
+    const tableTab = document.getElementById('tableTab');
+    const plotTab = document.getElementById('plotTab');
+    const plotControls = document.getElementById('plotControls');
+    const plotCanvas = document.getElementById('plotCanvas');
+    const ctx = plotCanvas.getContext('2d');
+    let files = [];
+    let measured = null;
+    let selectionStart = null;
+    let selectionEnd = null;
+    let isSelecting = false;
+    let selectedColumns = new Set();
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    async function getJson(path) {
+      const response = await fetch(path);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    async function loadFiles() {
+      const data = await getJson('/api/measured/list');
+      files = data.files;
+      fileSelect.innerHTML = '';
+      files.forEach((file) => {
+        const option = document.createElement('option');
+        option.value = file.id;
+        option.textContent = `${file.id} (${file.rows} rows)`;
+        fileSelect.appendChild(option);
+      });
+      if (files.length) {
+        fileSelect.value = files[0].id;
+      }
+    }
+
+    async function readMeasured() {
+      const fileId = fileSelect.value;
+      setStatus(`Reading ${fileId}.`);
+      try {
+        const data = await getJson(`/api/measured/read?file=${encodeURIComponent(fileId)}`);
+        measured = data.measured;
+        selectedColumns = new Set(measured.columns.map((_, index) => index));
+        fileStatus.textContent = measured.file;
+        clearSelection();
+        renderTable();
+        renderPlotControls();
+        drawPlot();
+        setStatus(`Loaded ${measured.rows.length} rows from ${measured.id}.`);
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    function columnLabel(index) {
+      const unit = measured.units[index];
+      return unit ? `${measured.columns[index]} (${unit})` : measured.columns[index];
+    }
+
+    function renderTable() {
+      headerRow.innerHTML = '';
+      tableBody.innerHTML = '';
+      if (!measured) {
+        return;
+      }
+
+      ['#', ...measured.columns].forEach((column, index) => {
+        const th = document.createElement('th');
+        th.textContent = index === 0 ? column : columnLabel(index - 1);
+        headerRow.appendChild(th);
+      });
+
+      measured.rows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        const indexCell = document.createElement('td');
+        indexCell.textContent = String(rowIndex + 1);
+        tr.appendChild(indexCell);
+
+        measured.columns.forEach((_, columnIndex) => {
+          const td = document.createElement('td');
+          td.className = 'cell';
+          td.textContent = row[columnIndex] ?? '';
+          td.dataset.row = String(rowIndex);
+          td.dataset.column = String(columnIndex);
+          td.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            isSelecting = true;
+            selectionStart = {row: rowIndex, column: columnIndex};
+            selectionEnd = {row: rowIndex, column: columnIndex};
+            updateSelection();
+          });
+          td.addEventListener('mouseover', () => {
+            if (!isSelecting) {
+              return;
+            }
+            selectionEnd = {row: rowIndex, column: columnIndex};
+            updateSelection();
+          });
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function clearSelection() {
+      selectionStart = null;
+      selectionEnd = null;
+      document.querySelectorAll('.cell.selected').forEach((cell) => {
+        cell.classList.remove('selected');
+      });
+    }
+
+    function updateSelection() {
+      document.querySelectorAll('.cell.selected').forEach((cell) => {
+        cell.classList.remove('selected');
+      });
+      if (!selectionStart || !selectionEnd) {
+        return;
+      }
+
+      const rowMin = Math.min(selectionStart.row, selectionEnd.row);
+      const rowMax = Math.max(selectionStart.row, selectionEnd.row);
+      const colMin = Math.min(selectionStart.column, selectionEnd.column);
+      const colMax = Math.max(selectionStart.column, selectionEnd.column);
+      document.querySelectorAll('.cell').forEach((cell) => {
+        const row = Number(cell.dataset.row);
+        const column = Number(cell.dataset.column);
+        if (row >= rowMin && row <= rowMax && column >= colMin && column <= colMax) {
+          cell.classList.add('selected');
+        }
+      });
+    }
+
+    function selectedText() {
+      if (!measured || !selectionStart || !selectionEnd) {
+        return '';
+      }
+      const rowMin = Math.min(selectionStart.row, selectionEnd.row);
+      const rowMax = Math.max(selectionStart.row, selectionEnd.row);
+      const colMin = Math.min(selectionStart.column, selectionEnd.column);
+      const colMax = Math.max(selectionStart.column, selectionEnd.column);
+      const lines = [];
+      for (let rowIndex = rowMin; rowIndex <= rowMax; rowIndex += 1) {
+        const values = [];
+        for (let columnIndex = colMin; columnIndex <= colMax; columnIndex += 1) {
+          values.push(measured.rows[rowIndex]?.[columnIndex] ?? '');
+        }
+        lines.push(values.join('\t'));
+      }
+      return lines.join('\n');
+    }
+
+    function renderPlotControls() {
+      plotControls.innerHTML = '';
+      if (!measured) {
+        return;
+      }
+
+      measured.columns.forEach((column, index) => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = selectedColumns.has(index);
+        input.addEventListener('change', () => {
+          if (input.checked) {
+            selectedColumns.add(index);
+          } else {
+            selectedColumns.delete(index);
+          }
+          drawPlot();
+        });
+        const text = document.createElement('span');
+        text.textContent = columnLabel(index);
+        label.append(input, text);
+        plotControls.appendChild(label);
+      });
+    }
+
+    function drawPlot() {
+      ctx.clearRect(0, 0, plotCanvas.width, plotCanvas.height);
+      ctx.fillStyle = '#111318';
+      ctx.fillRect(0, 0, plotCanvas.width, plotCanvas.height);
+      if (!measured || !measured.rows.length || selectedColumns.size === 0) {
+        drawEmptyPlot('No data selected.');
+        return;
+      }
+
+      const padding = {left: 58, right: 24, top: 24, bottom: 42};
+      const width = plotCanvas.width - padding.left - padding.right;
+      const height = plotCanvas.height - padding.top - padding.bottom;
+      const series = [...selectedColumns].map((columnIndex) => ({
+        columnIndex,
+        values: measured.rows.map((row) => Number(row[columnIndex])).filter((value) => Number.isFinite(value)),
+      }));
+      const allValues = series.flatMap((item) => item.values);
+      if (!allValues.length) {
+        drawEmptyPlot('No numeric data.');
+        return;
+      }
+
+      let minY = Math.min(...allValues);
+      let maxY = Math.max(...allValues);
+      if (minY === maxY) {
+        minY -= 1;
+        maxY += 1;
+      }
+
+      drawGrid(padding, width, height, minY, maxY);
+      series.forEach((item, seriesIndex) => {
+        drawSeries(item.columnIndex, seriesIndex, padding, width, height, minY, maxY);
+      });
+      drawLegend(series, padding);
+    }
+
+    function drawEmptyPlot(message) {
+      ctx.fillStyle = '#aab0bb';
+      ctx.font = '14px sans-serif';
+      ctx.fillText(message, 24, 36);
+    }
+
+    function drawGrid(padding, width, height, minY, maxY) {
+      ctx.strokeStyle = '#353941';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#aab0bb';
+      ctx.font = '12px sans-serif';
+      for (let i = 0; i <= 5; i += 1) {
+        const y = padding.top + (height * i / 5);
+        const value = maxY - ((maxY - minY) * i / 5);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + width, y);
+        ctx.stroke();
+        ctx.fillText(value.toFixed(2), 8, y + 4);
+      }
+      ctx.strokeStyle = '#707783';
+      ctx.strokeRect(padding.left, padding.top, width, height);
+    }
+
+    function drawSeries(columnIndex, seriesIndex, padding, width, height, minY, maxY) {
+      const rowCount = measured.rows.length;
+      ctx.strokeStyle = colors[seriesIndex % colors.length];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let started = false;
+      measured.rows.forEach((row, rowIndex) => {
+        const value = Number(row[columnIndex]);
+        if (!Number.isFinite(value)) {
+          return;
+        }
+        const x = padding.left + (rowCount === 1 ? 0 : width * rowIndex / (rowCount - 1));
+        const y = padding.top + height - ((value - minY) / (maxY - minY) * height);
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+
+    function drawLegend(series, padding) {
+      ctx.font = '12px sans-serif';
+      series.forEach((item, index) => {
+        const x = padding.left + (index % 3) * 180;
+        const y = plotCanvas.height - 16 - Math.floor(index / 3) * 18;
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.fillRect(x, y - 9, 18, 3);
+        ctx.fillStyle = '#f1f3f5';
+        ctx.fillText(columnLabel(item.columnIndex), x + 24, y);
+      });
+    }
+
+    function showPanel(name) {
+      const showPlot = name === 'plot';
+      tablePanel.classList.toggle('visible', !showPlot);
+      plotPanel.classList.toggle('visible', showPlot);
+      tableTab.classList.toggle('active', !showPlot);
+      plotTab.classList.toggle('active', showPlot);
+      if (showPlot) {
+        drawPlot();
+      }
+    }
+
+    document.getElementById('readMeasured').addEventListener('click', readMeasured);
+    tableTab.addEventListener('click', () => showPanel('table'));
+    plotTab.addEventListener('click', () => showPanel('plot'));
+    document.addEventListener('mouseup', () => {
+      isSelecting = false;
+    });
+    document.addEventListener('copy', (event) => {
+      const text = selectedText();
+      if (!text) {
+        return;
+      }
+      event.clipboardData.setData('text/plain', text);
+      event.preventDefault();
+      setStatus('Copied selected cells.');
+    });
+
+    loadFiles()
+      .then(readMeasured)
+      .catch((error) => setStatus(error.message));
+  </script>
+</body>
+</html>
