@@ -376,8 +376,8 @@
     openPath.addEventListener('click', () => {
       const isVisible = pathPanel.classList.toggle('visible');
       openPath.textContent = isVisible ? 'Hide Path' : 'Path';
-      if (isVisible && !pathFrame.src) {
-        pathFrame.src = '/path.html';
+      if (isVisible) {
+        pathFrame.src = `/path.html?v=${Date.now()}`;
       }
       if (isVisible) {
         nodePanel.classList.remove('visible');
