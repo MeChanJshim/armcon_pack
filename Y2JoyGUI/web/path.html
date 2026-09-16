@@ -207,7 +207,7 @@
       border-bottom: 0;
     }
 
-    td input {
+    .cell-value {
       width: 100%;
       min-width: 72px;
       height: 34px;
@@ -219,11 +219,20 @@
       font-size: 13px;
       padding: 0 8px;
       font-variant-numeric: tabular-nums;
+      line-height: 32px;
+      overflow: hidden;
+      white-space: nowrap;
+      user-select: text;
     }
 
-    td input:focus {
+    .cell-value:focus {
       outline: 2px solid rgba(149, 199, 255, 0.28);
       border-color: var(--focus);
+    }
+
+    .cell-value.selected {
+      border-color: var(--blue);
+      background: rgba(75, 163, 255, 0.18);
     }
 
     @media (max-width: 760px) {
@@ -297,6 +306,9 @@
     const fileStatus = document.getElementById('fileStatus');
     const unitInfo = document.getElementById('unitInfo');
     let rows = [];
+    let selectionStart = null;
+    let selectionEnd = null;
+    let isSelecting = false;
 
     function currentType() {
       return document.querySelector('input[name="pathType"]:checked').value;
@@ -358,15 +370,40 @@
 
         columns.forEach((column, columnIndex) => {
           const td = document.createElement('td');
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.inputMode = 'decimal';
-          input.value = row[columnIndex] ?? '';
-          input.setAttribute('aria-label', `${column} row ${rowIndex + 1}`);
-          input.addEventListener('input', () => {
-            rows[rowIndex][columnIndex] = input.value;
+          const cell = document.createElement('div');
+          cell.className = 'cell-value';
+          cell.contentEditable = 'true';
+          cell.inputMode = 'decimal';
+          cell.textContent = row[columnIndex] ?? '';
+          cell.dataset.row = String(rowIndex);
+          cell.dataset.column = String(columnIndex);
+          cell.setAttribute('role', 'textbox');
+          cell.setAttribute('aria-label', `${column} row ${rowIndex + 1}`);
+          cell.addEventListener('input', () => {
+            rows[rowIndex][columnIndex] = cell.textContent.trim();
+            clearSelection();
           });
-          td.appendChild(input);
+          cell.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              focusCell(rowIndex + 1, columnIndex);
+            }
+          });
+          cell.addEventListener('mousedown', () => {
+            isSelecting = true;
+            selectionStart = {row: rowIndex, column: columnIndex};
+            selectionEnd = {row: rowIndex, column: columnIndex};
+            updateSelection();
+          });
+          cell.addEventListener('mouseover', () => {
+            if (!isSelecting) {
+              return;
+            }
+            selectionEnd = {row: rowIndex, column: columnIndex};
+            updateSelection();
+          });
+          cell.addEventListener('paste', (event) => pasteCells(event, rowIndex, columnIndex));
+          td.appendChild(cell);
           tr.appendChild(td);
         });
 
@@ -383,6 +420,101 @@
         tr.appendChild(actionCell);
         tableBody.appendChild(tr);
       });
+    }
+
+    function clearSelection() {
+      selectionStart = null;
+      selectionEnd = null;
+      document.querySelectorAll('.cell-value.selected').forEach((cell) => {
+        cell.classList.remove('selected');
+      });
+    }
+
+    function updateSelection() {
+      document.querySelectorAll('.cell-value.selected').forEach((cell) => {
+        cell.classList.remove('selected');
+      });
+
+      if (!selectionStart || !selectionEnd) {
+        return;
+      }
+
+      const rowMin = Math.min(selectionStart.row, selectionEnd.row);
+      const rowMax = Math.max(selectionStart.row, selectionEnd.row);
+      const columnMin = Math.min(selectionStart.column, selectionEnd.column);
+      const columnMax = Math.max(selectionStart.column, selectionEnd.column);
+
+      document.querySelectorAll('.cell-value').forEach((cell) => {
+        const row = Number(cell.dataset.row);
+        const column = Number(cell.dataset.column);
+        if (row >= rowMin && row <= rowMax && column >= columnMin && column <= columnMax) {
+          cell.classList.add('selected');
+        }
+      });
+    }
+
+    function selectedText() {
+      if (!selectionStart || !selectionEnd) {
+        return '';
+      }
+
+      const rowMin = Math.min(selectionStart.row, selectionEnd.row);
+      const rowMax = Math.max(selectionStart.row, selectionEnd.row);
+      const columnMin = Math.min(selectionStart.column, selectionEnd.column);
+      const columnMax = Math.max(selectionStart.column, selectionEnd.column);
+      const lines = [];
+
+      for (let rowIndex = rowMin; rowIndex <= rowMax; rowIndex += 1) {
+        const values = [];
+        for (let columnIndex = columnMin; columnIndex <= columnMax; columnIndex += 1) {
+          values.push(rows[rowIndex]?.[columnIndex] ?? '');
+        }
+        lines.push(values.join('\t'));
+      }
+
+      return lines.join('\n');
+    }
+
+    function focusCell(rowIndex, columnIndex) {
+      const cell = tableBody.querySelector(
+        `.cell-value[data-row="${rowIndex}"][data-column="${columnIndex}"]`
+      );
+      if (cell) {
+        cell.focus();
+      }
+    }
+
+    function pasteCells(event, startRow, startColumn) {
+      const text = event.clipboardData.getData('text/plain');
+      if (!text.includes('\n') && !text.includes('\t')) {
+        return;
+      }
+
+      event.preventDefault();
+      const type = currentType();
+      const width = schemas[type].length;
+      const pastedRows = text
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => line.split(/\t| {2,}/).map((value) => value.trim()));
+
+      pastedRows.forEach((pastedRow, rowOffset) => {
+        const targetRow = startRow + rowOffset;
+        while (rows.length <= targetRow) {
+          rows.push(blankRow(type));
+        }
+
+        pastedRow.forEach((value, columnOffset) => {
+          const targetColumn = startColumn + columnOffset;
+          if (targetColumn < width) {
+            rows[targetRow][targetColumn] = value;
+          }
+        });
+      });
+
+      render();
+      focusCell(startRow, startColumn);
+      setStatus(`Pasted ${pastedRows.length} row(s).`);
     }
 
     function coerceRowsForType(type, incomingRows) {
@@ -437,6 +569,20 @@
     document.getElementById('addRow').addEventListener('click', () => {
       rows.push(blankRow(currentType()));
       render();
+    });
+
+    document.addEventListener('mouseup', () => {
+      isSelecting = false;
+    });
+
+    document.addEventListener('copy', (event) => {
+      const text = selectedText();
+      if (!text) {
+        return;
+      }
+      event.clipboardData.setData('text/plain', text);
+      event.preventDefault();
+      setStatus('Copied selected cells.');
     });
 
     rows = [blankRow(currentType())];
