@@ -68,7 +68,7 @@ private:
     rclcpp::Node::SharedPtr node_;
 
     /* Basic parameters */
-    double Control_period_ = 0.008;
+    double Control_period_ = 0.001;
 
     /* Monitoring flag */
     bool monitoring_flag = false;
