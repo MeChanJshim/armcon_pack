@@ -135,6 +135,23 @@
       margin-bottom: 10px;
     }
 
+    .unit-bar {
+      display: grid;
+      gap: 4px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .unit-bar strong {
+      color: var(--text);
+    }
+
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--line);
@@ -246,6 +263,7 @@
     </div>
 
     <div class="status" id="status">Ready.</div>
+    <div class="unit-bar" id="unitInfo"></div>
 
     <div class="table-wrap">
       <table>
@@ -262,11 +280,22 @@
       '6D': ['x', 'y', 'z', 'wx', 'wy', 'wz', 'desired_lin_vel', 'desired_ang_vel', 'holding_time'],
       '9D': ['x', 'y', 'z', 'wx', 'wy', 'wz', 'fx', 'fy', 'fz', 'desired_lin_vel', 'desired_ang_vel', 'holding_time']
     };
+    const units = {
+      '6D': {
+        summary: 'x, y, z: mm | wx, wy, wz: degree | desired_lin_vel: mm/s | desired_ang_vel: degree/s | holding_time: s',
+        columns: ['mm', 'mm', 'mm', 'deg', 'deg', 'deg', 'mm/s', 'deg/s', 's']
+      },
+      '9D': {
+        summary: 'x, y, z: mm | wx, wy, wz: degree | fx, fy, fz: N | desired_lin_vel: mm/s | desired_ang_vel: degree/s | holding_time: s',
+        columns: ['mm', 'mm', 'mm', 'deg', 'deg', 'deg', 'N', 'N', 'N', 'mm/s', 'deg/s', 's']
+      }
+    };
 
     const headerRow = document.getElementById('headerRow');
     const tableBody = document.getElementById('tableBody');
     const statusEl = document.getElementById('status');
     const fileStatus = document.getElementById('fileStatus');
+    const unitInfo = document.getElementById('unitInfo');
     let rows = [];
 
     function currentType() {
@@ -306,12 +335,18 @@
     function render() {
       const type = currentType();
       const columns = schemas[type];
+      const columnUnits = units[type].columns;
       headerRow.innerHTML = '';
       tableBody.innerHTML = '';
+      unitInfo.innerHTML = `<strong>${type} units</strong><span>${units[type].summary}</span>`;
 
-      ['#', ...columns, ''].forEach((column) => {
+      ['#', ...columns, ''].forEach((column, index) => {
         const th = document.createElement('th');
-        th.textContent = column;
+        if (index > 0 && index <= columns.length) {
+          th.textContent = `${column} (${columnUnits[index - 1]})`;
+        } else {
+          th.textContent = column;
+        }
         headerRow.appendChild(th);
       });
 
@@ -324,8 +359,7 @@
         columns.forEach((column, columnIndex) => {
           const td = document.createElement('td');
           const input = document.createElement('input');
-          input.type = 'number';
-          input.step = 'any';
+          input.type = 'text';
           input.inputMode = 'decimal';
           input.value = row[columnIndex] ?? '';
           input.setAttribute('aria-label', `${column} row ${rowIndex + 1}`);
