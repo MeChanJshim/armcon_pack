@@ -5,9 +5,12 @@ import subprocess
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 from ament_index_python.packages import get_package_share_directory
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Bool
 from std_msgs.msg import Float64MultiArray
@@ -38,6 +41,7 @@ class Y2JoyGuiNode(Node):
 
         self.allowed_modes = {"Idling", "Guiding", "Joystick", "Joystick_force"}
         self.web_dir = Path(get_package_share_directory("Y2JoyGUI")) / "web"
+        self.path_files = self.find_path_files()
         self.server = None
         self.server_thread = None
         self.process_lock = threading.Lock()
@@ -65,7 +69,9 @@ class Y2JoyGuiNode(Node):
                 self.end_headers()
 
             def do_GET(self):
-                if self.path == "/api/status":
+                parsed = urlparse(self.path)
+
+                if parsed.path == "/api/status":
                     self.write_json({
                         "ok": True,
                         "robot_name": node.robot_name,
@@ -78,14 +84,23 @@ class Y2JoyGuiNode(Node):
                     })
                     return
 
-                if self.path == "/api/processes":
+                if parsed.path == "/api/processes":
                     self.write_json({
                         "ok": True,
                         "processes": node.process_status(),
                     })
                     return
 
-                if self.path == "/":
+                if parsed.path == "/api/path/read":
+                    query = parse_qs(parsed.query)
+                    path_type = query.get("type", [""])[0]
+                    self.write_json({
+                        "ok": True,
+                        "path": node.read_path_file(path_type),
+                    })
+                    return
+
+                if parsed.path == "/":
                     self.path = "/index.html"
                 super().do_GET()
 
@@ -124,6 +139,15 @@ class Y2JoyGuiNode(Node):
                         self.write_json({
                             "ok": True,
                             "process": node.stop_process(process_id),
+                        })
+                        return
+
+                    if self.path == "/api/path/write":
+                        path_type = str(payload.get("type", ""))
+                        rows = payload.get("rows", [])
+                        self.write_json({
+                            "ok": True,
+                            "path": node.write_path_file(path_type, rows),
                         })
                         return
 
@@ -171,6 +195,8 @@ class Y2JoyGuiNode(Node):
             f"(serving {self.web_dir})")
         self.get_logger().info(
             f"Y2JoyGUI node runner: http://127.0.0.1:{self.port}/nodes.html")
+        self.get_logger().info(
+            f"Y2JoyGUI path editor: http://127.0.0.1:{self.port}/path.html")
         return True
 
     def publish_mode(self, mode):
@@ -206,6 +232,116 @@ class Y2JoyGuiNode(Node):
         msg = Float64MultiArray()
         msg.data = values
         self.joy_move_pub.publish(msg)
+
+    def find_path_files(self):
+        txtcmd_dir = None
+        try:
+            config_path = (
+                Path(get_package_share_directory("Y2RobMotion"))
+                / "config"
+                / "y2_rob_motion.yaml"
+            )
+            package_bundle_dir = self.read_package_bundle_dir(config_path)
+            if package_bundle_dir:
+                candidate = Path(package_bundle_dir) / "Y2RobMotion" / "txtcmd"
+                if candidate.exists():
+                    txtcmd_dir = candidate
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warn(f"Could not resolve Y2RobMotion txtcmd from config: {exc}")
+
+        if txtcmd_dir is None:
+            fallback = Path.home() / "armcon_ws" / "src" / "armcon_pack" / "Y2RobMotion" / "txtcmd"
+            txtcmd_dir = fallback
+
+        return {
+            "6D": {
+                "file": txtcmd_dir / "cmd_6D.txt",
+                "columns": ["x", "y", "z", "wx", "wy", "wz", "desired_lin_vel", "desired_ang_vel", "holding_time"],
+            },
+            "9D": {
+                "file": txtcmd_dir / "cmd_9D.txt",
+                "columns": ["x", "y", "z", "wx", "wy", "wz", "fx", "fy", "fz", "desired_lin_vel", "desired_ang_vel", "holding_time"],
+            },
+        }
+
+    def read_package_bundle_dir(self, config_path):
+        if not config_path.exists():
+            return None
+
+        for line in config_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("package_bundle_dir:"):
+                return stripped.split(":", 1)[1].strip().strip("'\"")
+        return None
+
+    def path_spec(self, path_type):
+        normalized = path_type.upper()
+        spec = self.path_files.get(normalized)
+        if spec is None:
+            raise ValueError(f"unsupported path type: {path_type}")
+        return normalized, spec
+
+    def read_path_file(self, path_type):
+        normalized, spec = self.path_spec(path_type)
+        file_path = spec["file"]
+        if not file_path.exists():
+            raise ValueError(f"path file does not exist: {file_path}")
+
+        rows = []
+        for line in file_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            rows.append(stripped.split())
+
+        return {
+            "type": normalized,
+            "file": str(file_path),
+            "columns": spec["columns"],
+            "rows": rows,
+        }
+
+    def write_path_file(self, path_type, rows):
+        normalized, spec = self.path_spec(path_type)
+        if not isinstance(rows, list):
+            raise ValueError("rows must be a list")
+
+        column_count = len(spec["columns"])
+        clean_rows = []
+        for row_index, row in enumerate(rows, start=1):
+            if not isinstance(row, list):
+                raise ValueError(f"row {row_index} must be a list")
+            if len(row) != column_count:
+                raise ValueError(f"row {row_index} must have {column_count} columns")
+
+            clean_row = []
+            for column_index, value in enumerate(row, start=1):
+                text = str(value).strip()
+                if text == "":
+                    raise ValueError(f"row {row_index}, column {column_index} is empty")
+                try:
+                    float(text)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"row {row_index}, column {column_index} is not numeric: {text}"
+                    ) from exc
+                clean_row.append(text)
+            clean_rows.append(clean_row)
+
+        file_path = spec["file"]
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        content = "\n".join(" ".join(row) for row in clean_rows)
+        if content:
+            content += "\n"
+        file_path.write_text(content, encoding="utf-8")
+        self.get_logger().info(f"Saved {normalized} path file: {file_path}")
+
+        return {
+            "type": normalized,
+            "file": str(file_path),
+            "columns": spec["columns"],
+            "rows": clean_rows,
+        }
 
     def build_process_specs(self):
         specs = [
@@ -486,7 +622,7 @@ def main(args=None):
         return 1
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()

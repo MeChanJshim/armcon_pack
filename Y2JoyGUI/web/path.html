@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Y2JoyGUI Path Editor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #1b1d22;
+      --panel-2: #22252b;
+      --line: #353941;
+      --text: #f1f3f5;
+      --muted: #aab0bb;
+      --green: #36c275;
+      --blue: #4ba3ff;
+      --red: #ff6868;
+      --focus: #95c7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .choice-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: auto;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .choice-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    input[type="radio"] {
+      accent-color: var(--blue);
+    }
+
+    button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: 0;
+      padding: 0 13px;
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+    }
+
+    button:hover {
+      border-color: var(--focus);
+      background: #292d34;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .write {
+      color: var(--green);
+    }
+
+    .delete {
+      min-width: 34px;
+      color: var(--red);
+      padding: 0;
+    }
+
+    .status {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 7px;
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #202329;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    th:first-child,
+    td:first-child {
+      width: 48px;
+      min-width: 48px;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    th:last-child,
+    td:last-child {
+      width: 50px;
+      min-width: 50px;
+      border-right: 0;
+      text-align: center;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    td input {
+      width: 100%;
+      min-width: 72px;
+      height: 34px;
+      border: 1px solid #2d323a;
+      border-radius: 6px;
+      background: #14161a;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      padding: 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    td input:focus {
+      outline: 2px solid rgba(149, 199, 255, 0.28);
+      border-color: var(--focus);
+    }
+
+    @media (max-width: 760px) {
+      header {
+        display: block;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .choice-row {
+        width: 100%;
+      }
+
+      button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Path Editor</h1>
+      <div class="status" id="fileStatus">No file loaded.</div>
+    </header>
+
+    <div class="toolbar">
+      <div class="choice-row" role="radiogroup" aria-label="Path type">
+        <label><input type="radio" name="pathType" value="6D" checked>6D</label>
+        <label><input type="radio" name="pathType" value="9D">9D</label>
+      </div>
+      <button id="readPath" type="button">Read</button>
+      <button id="addRow" type="button">Add Row</button>
+      <button id="writePath" class="write" type="button">Write</button>
+    </div>
+
+    <div class="status" id="status">Ready.</div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const schemas = {
+      '6D': ['x', 'y', 'z', 'wx', 'wy', 'wz', 'desired_lin_vel', 'desired_ang_vel', 'holding_time'],
+      '9D': ['x', 'y', 'z', 'wx', 'wy', 'wz', 'fx', 'fy', 'fz', 'desired_lin_vel', 'desired_ang_vel', 'holding_time']
+    };
+
+    const headerRow = document.getElementById('headerRow');
+    const tableBody = document.getElementById('tableBody');
+    const statusEl = document.getElementById('status');
+    const fileStatus = document.getElementById('fileStatus');
+    let rows = [];
+
+    function currentType() {
+      return document.querySelector('input[name="pathType"]:checked').value;
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    async function getJson(path) {
+      const response = await fetch(path);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    async function postJson(path, payload) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    }
+
+    function blankRow(type) {
+      return schemas[type].map(() => '0.0');
+    }
+
+    function render() {
+      const type = currentType();
+      const columns = schemas[type];
+      headerRow.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      ['#', ...columns, ''].forEach((column) => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+      });
+
+      rows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        const indexCell = document.createElement('td');
+        indexCell.textContent = String(rowIndex + 1);
+        tr.appendChild(indexCell);
+
+        columns.forEach((column, columnIndex) => {
+          const td = document.createElement('td');
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.step = 'any';
+          input.inputMode = 'decimal';
+          input.value = row[columnIndex] ?? '';
+          input.setAttribute('aria-label', `${column} row ${rowIndex + 1}`);
+          input.addEventListener('input', () => {
+            rows[rowIndex][columnIndex] = input.value;
+          });
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+
+        const actionCell = document.createElement('td');
+        const remove = document.createElement('button');
+        remove.className = 'delete';
+        remove.type = 'button';
+        remove.textContent = '-';
+        remove.addEventListener('click', () => {
+          rows.splice(rowIndex, 1);
+          render();
+        });
+        actionCell.appendChild(remove);
+        tr.appendChild(actionCell);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function coerceRowsForType(type, incomingRows) {
+      const width = schemas[type].length;
+      return incomingRows.map((row) => {
+        const next = row.slice(0, width);
+        while (next.length < width) {
+          next.push('0.0');
+        }
+        return next;
+      });
+    }
+
+    async function readPath() {
+      const type = currentType();
+      setStatus(`Reading ${type}.`);
+      try {
+        const data = await getJson(`/api/path/read?type=${encodeURIComponent(type)}`);
+        rows = coerceRowsForType(type, data.path.rows);
+        fileStatus.textContent = data.path.file;
+        render();
+        setStatus(`Loaded ${rows.length} rows from ${type}.`);
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function writePath() {
+      const type = currentType();
+      setStatus(`Writing ${type}.`);
+      try {
+        const data = await postJson('/api/path/write', {type, rows});
+        rows = coerceRowsForType(type, data.path.rows);
+        fileStatus.textContent = data.path.file;
+        render();
+        setStatus(`Saved ${rows.length} rows to ${type}.`);
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    document.querySelectorAll('input[name="pathType"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        rows = [blankRow(currentType())];
+        fileStatus.textContent = 'No file loaded.';
+        render();
+      });
+    });
+
+    document.getElementById('readPath').addEventListener('click', readPath);
+    document.getElementById('writePath').addEventListener('click', writePath);
+    document.getElementById('addRow').addEventListener('click', () => {
+      rows.push(blankRow(currentType()));
+      render();
+    });
+
+    rows = [blankRow(currentType())];
+    render();
+  </script>
+</body>
+</html>
