@@ -222,7 +222,8 @@
       line-height: 32px;
       overflow: hidden;
       white-space: nowrap;
-      user-select: text;
+      cursor: cell;
+      user-select: none;
     }
 
     .cell-value:focus {
@@ -233,6 +234,12 @@
     .cell-value.selected {
       border-color: var(--blue);
       background: rgba(75, 163, 255, 0.18);
+    }
+
+    .cell-value.editing {
+      cursor: text;
+      user-select: text;
+      background: #14161a;
     }
 
     @media (max-width: 760px) {
@@ -372,7 +379,7 @@
           const td = document.createElement('td');
           const cell = document.createElement('div');
           cell.className = 'cell-value';
-          cell.contentEditable = 'true';
+          cell.contentEditable = 'false';
           cell.inputMode = 'decimal';
           cell.textContent = row[columnIndex] ?? '';
           cell.dataset.row = String(rowIndex);
@@ -386,14 +393,22 @@
           cell.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
-              focusCell(rowIndex + 1, columnIndex);
+              stopEditing(cell);
+              selectSingleCell(rowIndex + 1, columnIndex);
+            }
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              cell.textContent = rows[rowIndex][columnIndex] ?? '';
+              stopEditing(cell);
             }
           });
-          cell.addEventListener('mousedown', () => {
+          cell.addEventListener('mousedown', (event) => {
+            if (cell.classList.contains('editing')) {
+              return;
+            }
+            event.preventDefault();
             isSelecting = true;
-            selectionStart = {row: rowIndex, column: columnIndex};
-            selectionEnd = {row: rowIndex, column: columnIndex};
-            updateSelection();
+            selectSingleCell(rowIndex, columnIndex);
           });
           cell.addEventListener('mouseover', () => {
             if (!isSelecting) {
@@ -402,7 +417,14 @@
             selectionEnd = {row: rowIndex, column: columnIndex};
             updateSelection();
           });
-          cell.addEventListener('paste', (event) => pasteCells(event, rowIndex, columnIndex));
+          cell.addEventListener('dblclick', () => startEditing(cell));
+          cell.addEventListener('blur', () => stopEditing(cell));
+          cell.addEventListener('paste', (event) => {
+            if (cell.classList.contains('editing')) {
+              return;
+            }
+            pasteCells(event, rowIndex, columnIndex);
+          });
           td.appendChild(cell);
           tr.appendChild(td);
         });
@@ -428,6 +450,43 @@
       document.querySelectorAll('.cell-value.selected').forEach((cell) => {
         cell.classList.remove('selected');
       });
+    }
+
+    function selectSingleCell(rowIndex, columnIndex) {
+      selectionStart = {row: rowIndex, column: columnIndex};
+      selectionEnd = {row: rowIndex, column: columnIndex};
+      updateSelection();
+    }
+
+    function startEditing(cell, initialValue = null) {
+      isSelecting = false;
+      clearSelection();
+      cell.contentEditable = 'true';
+      cell.classList.add('editing');
+      if (initialValue !== null) {
+        cell.textContent = initialValue;
+        rows[Number(cell.dataset.row)][Number(cell.dataset.column)] = initialValue;
+      }
+      cell.focus();
+      selectCellText(cell);
+    }
+
+    function stopEditing(cell) {
+      if (!cell.classList.contains('editing')) {
+        return;
+      }
+      cell.textContent = cell.textContent.trim();
+      rows[Number(cell.dataset.row)][Number(cell.dataset.column)] = cell.textContent;
+      cell.contentEditable = 'false';
+      cell.classList.remove('editing');
+    }
+
+    function selectCellText(cell) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
 
     function updateSelection() {
@@ -482,6 +541,16 @@
       if (cell) {
         cell.focus();
       }
+    }
+
+    function selectedStartCell() {
+      if (!selectionStart || !selectionEnd) {
+        return null;
+      }
+      return {
+        row: Math.min(selectionStart.row, selectionEnd.row),
+        column: Math.min(selectionStart.column, selectionEnd.column),
+      };
     }
 
     function pasteCells(event, startRow, startColumn) {
@@ -583,6 +652,31 @@
       event.clipboardData.setData('text/plain', text);
       event.preventDefault();
       setStatus('Copied selected cells.');
+    });
+
+    document.addEventListener('paste', (event) => {
+      const start = selectedStartCell();
+      if (!start) {
+        return;
+      }
+      pasteCells(event, start.row, start.column);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!selectionStart || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+      if (event.key.length !== 1) {
+        return;
+      }
+      const start = selectedStartCell();
+      const cell = tableBody.querySelector(
+        `.cell-value[data-row="${start.row}"][data-column="${start.column}"]`
+      );
+      if (cell) {
+        event.preventDefault();
+        startEditing(cell, event.key);
+      }
     });
 
     rows = [blankRow(currentType())];
