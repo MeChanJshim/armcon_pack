@@ -31,7 +31,7 @@ response_recorder:
     experiment_name: "cartesian_id"
     # CSV sampling rate. This should be at least as high as the expected
     # response bandwidth and usually matches the simulator state publish rate.
-    # Current armsimul_pack default: publish_rate_hz = 1000 Hz.
+    # Current mujoco_simulpack default: publish_rate_hz = 1000 Hz.
     record_rate_hz: 1000.0
 
     command_pose_topic: "/ur10skku/cmdMotion"

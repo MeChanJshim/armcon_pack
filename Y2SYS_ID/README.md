@@ -9,7 +9,7 @@ The package is intended for this chain:
   -> Y2RobMotion Position mode
   -> IK target joint generation
   -> /armsimul/joint_position_cmd_array
-  -> armsimul_pack MuJoCo joint position actuator
+  -> mujoco_simulpack MuJoCo joint position actuator
   -> /ur10skku/currentP, /ur10skku/currentJ, /armsimul/joint_states
 ```
 
@@ -171,8 +171,8 @@ System identification depends on the timing of every loop in the chain. The defa
 Y2SYS_ID command publish       1000 Hz  -> /ur10skku/cmdMotion
 Y2SYS_ID CSV record            1000 Hz  -> response_recorder_node
 Y2RobMotion control loop       1000 Hz  -> control_period = 0.001 s
-armsimul_pack simulation       1000 Hz  -> simulation_rate_hz
-armsimul_pack state publish    1000 Hz  -> publish_rate_hz
+ mujoco_simulpack simulation       1000 Hz  -> simulation_rate_hz
+ mujoco_simulpack state publish    1000 Hz  -> publish_rate_hz
 ```
 
 Relevant files:
@@ -185,7 +185,7 @@ Y2SYS_ID/config/cartesian_id.yaml
 Y2RobMotion/config/y2_rob_motion.yaml
   control_period: Cartesian command, IK, and joint command loop period
 
-armsimul_pack/config/ur10_contact_sim.yaml
+mujoco_simulpack/config/ur10_contact_sim.yaml
   simulation_rate_hz: MuJoCo stepping rate
   publish_rate_hz: /armsimul/joint_states and /armsimul/ee_wrench publish rate
 ```
@@ -198,8 +198,8 @@ Recommended starting point:
 Y2SYS_ID publish_rate_hz       = 1000.0
 Y2SYS_ID record_rate_hz        = 1000.0
 Y2RobMotion control_period     = 0.001
-armsimul_pack simulation_rate  = 1000.0
-armsimul_pack publish_rate     = 1000.0
+mujoco_simulpack simulation_rate  = 1000.0
+mujoco_simulpack publish_rate     = 1000.0
 ```
 
 With 1 kHz sampling, start Cartesian sine/chirp tests conservatively, for example 0.1 Hz to 20 Hz. The theoretical Nyquist limit is much higher, but robot motion, IK behavior, actuator limits, and phase lag usually become the practical limits first.
@@ -221,7 +221,7 @@ Terminal 1: start the MuJoCo simulator.
 ```bash
 cd /home/jay/armcon_ws
 source install/setup.bash
-ros2 launch armsimul_pack ur10_contact_sim.launch.py
+ros2 launch mujoco_simulpack ur10_contact_sim.launch.py
 ```
 
 Terminal 2: start `Y2RobMotion` connected to the simulator.

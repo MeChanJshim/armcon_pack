@@ -69,6 +69,64 @@
       gap: 12px;
     }
 
+    .current-mode {
+      display: flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .current-mode strong {
+      margin-left: 5px;
+      color: var(--text);
+    }
+
+    .monitor-table {
+      margin-bottom: 14px;
+      overflow-x: auto;
+    }
+
+    .monitor-table table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .monitor-table th,
+    .monitor-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .monitor-table th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .monitor-table th:first-child,
+    .monitor-table td:first-child {
+      text-align: left;
+    }
+
+    .monitor-source {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
     .tool-button {
       min-height: 34px;
       padding: 0 14px;
@@ -159,7 +217,41 @@
     .record-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .side-stack {
+      display: grid;
+      align-content: start;
       gap: 10px;
+    }
+
+    .compact-panel {
+      padding: 12px;
+    }
+
+    .compact-panel h2 {
+      margin-bottom: 8px;
+    }
+
+    .compact-panel button {
+      min-height: 42px;
+      font-size: 14px;
+    }
+
+    .txt-load-button {
+      color: var(--amber);
+    }
+
+    .txt-action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .txt-stop-button,
+    #ptpStop {
+      color: var(--red);
     }
 
     .record-start {
@@ -219,6 +311,62 @@
       font-size: 14px;
     }
 
+    .ptp-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .ptp-field {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .ptp-field input {
+      width: 100%;
+      min-width: 0;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #14161a;
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      padding: 0 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ptp-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .ptp-actions button {
+      min-width: 112px;
+      min-height: 42px;
+      font-size: 14px;
+    }
+
+    .motion-state {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    #ptpMove {
+      color: var(--green);
+    }
+
+    #ptpReset {
+      color: var(--muted);
+    }
+
     .log {
       margin-top: 14px;
       min-height: 42px;
@@ -266,6 +414,10 @@
         grid-template-columns: 1fr;
       }
 
+      .ptp-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .axis {
         grid-template-columns: 1fr;
         gap: 6px;
@@ -287,12 +439,53 @@
     <header>
       <h1>Y2JoyGUI</h1>
       <div class="header-tools">
+        <div class="current-mode">Mode:<strong id="currentMode">Unknown</strong></div>
         <button id="openNodes" class="tool-button" type="button">Nodes</button>
         <button id="openPath" class="tool-button" type="button">Path</button>
         <button id="openMeasured" class="tool-button" type="button">Measured</button>
         <div class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting</span></div>
       </div>
     </header>
+
+    <section class="monitor-table">
+      <h2>EE Pose and Force Monitor</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>x / Fx</th>
+            <th>y / Fy</th>
+            <th>z / Fz</th>
+            <th>wx / Tx</th>
+            <th>wy / Ty</th>
+            <th>wz / Tz</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>EE target pose (mm, rad)</td>
+            <td id="monitorTargetP0">-</td><td id="monitorTargetP1">-</td><td id="monitorTargetP2">-</td>
+            <td id="monitorTargetP3">-</td><td id="monitorTargetP4">-</td><td id="monitorTargetP5">-</td>
+          </tr>
+          <tr>
+            <td>EE current pose (mm, rad)</td>
+            <td id="monitorCurrentP0">-</td><td id="monitorCurrentP1">-</td><td id="monitorCurrentP2">-</td>
+            <td id="monitorCurrentP3">-</td><td id="monitorCurrentP4">-</td><td id="monitorCurrentP5">-</td>
+          </tr>
+          <tr>
+            <td>TCP/controller F/T (N, N*m)</td>
+            <td id="monitorCurrentF0">-</td><td id="monitorCurrentF1">-</td><td id="monitorCurrentF2">-</td>
+            <td id="monitorCurrentF3">-</td><td id="monitorCurrentF4">-</td><td id="monitorCurrentF5">-</td>
+          </tr>
+          <tr>
+            <td>Base/raw sensor F/T (N, N*m)</td>
+            <td id="monitorBaseF0">-</td><td id="monitorBaseF1">-</td><td id="monitorBaseF2">-</td>
+            <td id="monitorBaseF3">-</td><td id="monitorBaseF4">-</td><td id="monitorBaseF5">-</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="monitor-source" id="monitorSource">Force source: waiting</div>
+    </section>
 
     <div class="layout">
       <section>
@@ -307,13 +500,23 @@
         <div class="log" id="log">Ready.</div>
       </section>
 
-      <section>
-        <h2>Recording</h2>
-        <div class="record-row">
-          <button class="record-start" data-record="start" type="button">Start</button>
-          <button class="record-stop" data-record="stop" type="button">Stop</button>
-        </div>
-      </section>
+      <div class="side-stack">
+        <section class="compact-panel">
+          <h2>Recording</h2>
+          <div class="record-row">
+            <button class="record-start" data-record="start" type="button">Start</button>
+            <button class="record-stop" data-record="stop" type="button">Stop</button>
+          </div>
+        </section>
+        <section class="compact-panel">
+          <h2>TXTLoad</h2>
+          <div class="txt-action-row">
+            <button id="txtLoad" class="txt-load-button" type="button">Load Path</button>
+            <button id="txtPause" type="button">Pause</button>
+            <button id="txtStop" class="txt-stop-button" type="button">Stop</button>
+          </div>
+        </section>
+      </div>
     </div>
 
     <section style="margin-top:14px">
@@ -323,6 +526,18 @@
         <button id="sendAxes" type="button">Send Axes</button>
         <button id="zeroAxes" type="button">Neutral Axes</button>
       </div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>PTP Target Pose</h2>
+      <div id="ptpGrid" class="ptp-grid"></div>
+      <div class="ptp-actions">
+        <button id="ptpReset" type="button">Reset</button>
+        <button id="ptpPause" type="button">Pause</button>
+        <button id="ptpStop" type="button">Stop</button>
+        <button id="ptpMove" type="button">Move</button>
+      </div>
+      <div id="motionState" class="motion-state">Waiting for robot pose</div>
     </section>
 
     <section id="nodePanel" class="node-panel" aria-label="Node runner">
@@ -352,6 +567,12 @@
     const pathFrame = document.getElementById('pathFrame');
     const measuredPanel = document.getElementById('measuredPanel');
     const measuredFrame = document.getElementById('measuredFrame');
+    const ptpGrid = document.getElementById('ptpGrid');
+    const ptpFields = [
+      {key: 'x', unit: 'mm'}, {key: 'y', unit: 'mm'}, {key: 'z', unit: 'mm'},
+      {key: 'wx', unit: 'deg'}, {key: 'wy', unit: 'deg'}, {key: 'wz', unit: 'deg'},
+      {key: 'velocity', unit: 'deg/s', value: 0.5}
+    ];
     const neutralAxes = [0, 0, 1, 0, 0, 0, 0, 0];
     const axisValues = [...neutralAxes];
     const axisMeta = [
@@ -431,9 +652,34 @@
         const namespace = data.topics?.mode?.replace(/\/cmdMode$/, '') || `/${data.robot_name}`;
         dot.classList.add('ok');
         statusText.textContent = `Command server connected (${namespace})`;
+        document.getElementById('currentMode').textContent = data.topics?.current_mode || 'Unknown';
+        document.getElementById('motionState').textContent = data.topics?.command_state || 'No robot command state';
       } catch (error) {
         dot.classList.remove('ok');
         statusText.textContent = 'Server unavailable';
+      }
+    }
+
+    function updateMonitor(values, prefix) {
+      (values || []).forEach((value, index) => {
+        const element = document.getElementById(`${prefix}${index}`);
+        if (element) {
+          element.textContent = value === null || value === undefined ? '-' : Number(value).toFixed(4);
+        }
+      });
+    }
+
+    async function checkMonitor() {
+      try {
+        const response = await fetch('/api/monitor');
+        const data = await response.json();
+        updateMonitor(data.targetP, 'monitorTargetP');
+        updateMonitor(data.currentP, 'monitorCurrentP');
+        updateMonitor(data.currentF, 'monitorCurrentF');
+        updateMonitor(data.baseF, 'monitorBaseF');
+        document.getElementById('monitorSource').textContent = `Force source: ${data.base_source || 'waiting'}`;
+      } catch (error) {
+        document.getElementById('monitorSource').textContent = 'Force source: unavailable';
       }
     }
 
@@ -469,6 +715,85 @@
         axisList.appendChild(row);
       });
     }
+
+    function renderPtpFields() {
+      ptpGrid.replaceChildren();
+      ptpFields.forEach((field) => {
+        const label = document.createElement('label');
+        label.className = 'ptp-field';
+        label.textContent = `${field.key} (${field.unit})`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = 'any';
+        input.dataset.ptp = field.key;
+        input.value = String(field.value ?? 0);
+        label.appendChild(input);
+        ptpGrid.appendChild(label);
+      });
+    }
+
+    document.getElementById('ptpReset').addEventListener('click', () => {
+      ptpFields.forEach((field) => {
+        field.value = field.key === 'velocity' ? 0.5 : 0;
+      });
+      renderPtpFields();
+      setLog('PTP target values reset.');
+    });
+
+    document.getElementById('ptpMove').addEventListener('click', async () => {
+      const target = ['x', 'y', 'z', 'wx', 'wy', 'wz'].map((key) =>
+        Number(ptpGrid.querySelector(`[data-ptp="${key}"]`).value));
+      const velocity = Number(ptpGrid.querySelector('[data-ptp="velocity"]').value);
+      if (![...target, velocity].every(Number.isFinite) || velocity <= 0) {
+        setLog('Enter finite pose values and a velocity greater than zero.');
+        return;
+      }
+      try {
+        await postJson('/api/ptp', {target, velocity});
+        setLog('PTP move requested.');
+      } catch (error) {
+        setLog(error.message);
+      }
+    });
+
+    document.getElementById('txtLoad').addEventListener('click', async () => {
+      try {
+        await postJson('/api/txt_load', {});
+        setLog('TXTLoad requested using the configured trajectory mode.');
+      } catch (error) {
+        setLog(error.message);
+      }
+    });
+
+    function bindMotionControls(pauseButton, stopButton) {
+      let paused = false;
+      pauseButton.addEventListener('click', async () => {
+        try {
+          const action = paused ? 'resume' : 'pause';
+          await postJson(`/api/motion/${action}`, {});
+          paused = !paused;
+          pauseButton.textContent = paused ? 'Resume' : 'Pause';
+          setLog(paused ? 'Motion paused.' : 'Motion resumed.');
+        } catch (error) {
+          setLog(error.message);
+        }
+      });
+      stopButton.addEventListener('click', async () => {
+          try {
+            await postJson('/api/motion/stop', {});
+            setLog('Motion stopped. Switching to Idling.');
+            paused = false;
+            pauseButton.textContent = 'Pause';
+          } catch (error) {
+            setLog(error.message);
+          }
+      });
+    }
+
+    bindMotionControls(
+      document.getElementById('txtPause'), document.getElementById('txtStop'));
+    bindMotionControls(
+      document.getElementById('ptpPause'), document.getElementById('ptpStop'));
 
     document.querySelectorAll('[data-mode]').forEach((button) => {
       button.addEventListener('click', async () => {
@@ -517,8 +842,11 @@
     });
 
     renderAxes();
+    renderPtpFields();
     checkStatus();
     setInterval(checkStatus, 2000);
+    checkMonitor();
+    setInterval(checkMonitor, 500);
   </script>
 </body>
 </html>

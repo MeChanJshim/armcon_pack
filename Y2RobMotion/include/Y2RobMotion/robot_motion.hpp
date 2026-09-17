@@ -108,6 +108,7 @@ private:
     int joy_force_target_axis_ = 2;
     double joy_force_input_neutral_ = 1.0;
     double joy_force_deadband_ = 0.03;
+    bool joy_force_input_armed_ = false;
 
     /* GForce 6-DOF force controller */
     gforce_control::SixDofForceController gforce_controller_;

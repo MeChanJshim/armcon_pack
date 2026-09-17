@@ -193,7 +193,10 @@ void robot_motion::joyMoveCB(const std_msgs::msg::Float64MultiArray::SharedPtr m
         const double filtered_delta =
             std::fabs(axis_delta) < joy_force_deadband_ ? 0.0 : axis_delta;
         joy_force_command_[joy_force_target_axis_] =
-            filtered_delta * joy_force_input_scale_;
+            joy_force_input_armed_ ? filtered_delta * joy_force_input_scale_ : 0.0;
+        if (filtered_delta == 0.0) {
+            joy_force_input_armed_ = true;
+        }
     }
 }
 
@@ -414,6 +417,7 @@ void robot_motion::control_idling()
     {
         target_pose = current_pose;
         target_angles = current_angles;
+        setPrevQ(current_angles);
     }
 
     pre_control_mode = control_mode;
@@ -428,6 +432,7 @@ void robot_motion::control_position()
     {
         target_pose = current_pose;
         target_angles = current_angles;
+        setPrevQ(current_angles);
     }
 
     if(control_mode == "Position"){
@@ -454,6 +459,7 @@ void robot_motion::control_joystick()
     {
         camera_joystick_reference_valid_ = false;
         initialize_force_control_state();
+        setPrevQ(current_angles);
     }
 
     if(!camera_teaching_command_received_)
@@ -540,7 +546,10 @@ void robot_motion::control_joystick_force()
     if(pre_control_mode != control_mode)
     {
         joy_target_pose = current_pose;
+        joy_force_input_armed_ = false;
+        std::fill(joy_force_command_.begin(), joy_force_command_.end(), 0.0);
         initialize_force_control_state();
+        setPrevQ(current_angles);
     }
 
     update_force_target_from_joystick();

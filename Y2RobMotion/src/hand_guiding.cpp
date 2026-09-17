@@ -9,6 +9,7 @@ void robot_motion::control_guiding()
         /* Motion initial */
         target_pose = current_pose;
         target_angles = current_angles;
+        setPrevQ(current_angles);
         
         /* admittance contorl parameters */
         HG_AC_desX = current_pose; // Current_pose: mm, rad

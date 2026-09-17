@@ -386,6 +386,7 @@
           cell.dataset.column = String(columnIndex);
           cell.setAttribute('role', 'textbox');
           cell.setAttribute('aria-label', `${column} row ${rowIndex + 1}`);
+          cell.tabIndex = 0;
           cell.addEventListener('input', () => {
             rows[rowIndex][columnIndex] = cell.textContent.trim();
             clearSelection();
@@ -409,6 +410,7 @@
             event.preventDefault();
             isSelecting = true;
             selectSingleCell(rowIndex, columnIndex);
+            cell.focus({preventScroll: true});
           });
           cell.addEventListener('mouseover', () => {
             if (!isSelecting) {
@@ -419,12 +421,6 @@
           });
           cell.addEventListener('dblclick', () => startEditing(cell));
           cell.addEventListener('blur', () => stopEditing(cell));
-          cell.addEventListener('paste', (event) => {
-            if (cell.classList.contains('editing')) {
-              return;
-            }
-            pasteCells(event, rowIndex, columnIndex);
-          });
           td.appendChild(cell);
           tr.appendChild(td);
         });
@@ -456,6 +452,7 @@
       selectionStart = {row: rowIndex, column: columnIndex};
       selectionEnd = {row: rowIndex, column: columnIndex};
       updateSelection();
+      setStatus(`Selected row ${rowIndex + 1}, column ${schemas[currentType()][columnIndex]}.`);
     }
 
     function startEditing(cell, initialValue = null) {
@@ -539,7 +536,7 @@
         `.cell-value[data-row="${rowIndex}"][data-column="${columnIndex}"]`
       );
       if (cell) {
-        cell.focus();
+        cell.focus({preventScroll: true});
       }
     }
 
@@ -562,9 +559,11 @@
       event.preventDefault();
       const type = currentType();
       const width = schemas[type].length;
-      const pastedRows = text
-        .trim()
-        .split(/\r?\n/)
+      const lines = text.replace(/\r\n?/g, '\n').split('\n');
+      while (lines.length && lines[lines.length - 1] === '') {
+        lines.pop();
+      }
+      const pastedRows = lines
         .map((line) => line.split(/\t| {2,}/).map((value) => value.trim()));
 
       pastedRows.forEach((pastedRow, rowOffset) => {
@@ -583,7 +582,10 @@
 
       render();
       focusCell(startRow, startColumn);
-      setStatus(`Pasted ${pastedRows.length} row(s).`);
+      const columnCount = Math.max(...pastedRows.map((row) => row.length));
+      setStatus(
+        `Pasted ${pastedRows.length} row(s) x ${columnCount} column(s) at ${schemas[type][startColumn] ?? 'end'}.`
+      );
     }
 
     function coerceRowsForType(type, incomingRows) {
@@ -655,7 +657,18 @@
     });
 
     document.addEventListener('paste', (event) => {
-      const start = selectedStartCell();
+      const targetCell = event.target instanceof Element
+        ? event.target.closest('.cell-value')
+        : null;
+      if (targetCell?.classList.contains('editing')) {
+        return;
+      }
+      const start = targetCell
+        ? {
+            row: Number(targetCell.dataset.row),
+            column: Number(targetCell.dataset.column),
+          }
+        : selectedStartCell();
       if (!start) {
         return;
       }

@@ -20,7 +20,7 @@ setup(
     zip_safe=True,
     maintainer="Jaeyun Sim",
     maintainer_email="wodbs02221@gmail.com",
-    description="Browser GUI for publishing Y2 joystick command topics.",
+    description="Browser GUI for joystick control and generated PTP/TXTLoad motion commands.",
     license="Proprietary",
     tests_require=["pytest"],
     entry_points={

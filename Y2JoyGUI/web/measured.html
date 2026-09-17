@@ -364,12 +364,15 @@
           td.textContent = row[columnIndex] ?? '';
           td.dataset.row = String(rowIndex);
           td.dataset.column = String(columnIndex);
+          td.tabIndex = 0;
+          td.setAttribute('role', 'gridcell');
           td.addEventListener('mousedown', (event) => {
             event.preventDefault();
             isSelecting = true;
             selectionStart = {row: rowIndex, column: columnIndex};
             selectionEnd = {row: rowIndex, column: columnIndex};
             updateSelection();
+            td.focus({preventScroll: true});
           });
           td.addEventListener('mouseover', () => {
             if (!isSelecting) {

@@ -118,6 +118,7 @@ void robot_motion::control_force()
     if(pre_control_mode != control_mode)
     {
         initialize_force_control_state();
+        setPrevQ(current_angles);
     }
 
     execute_force_control();
