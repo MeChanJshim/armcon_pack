@@ -79,6 +79,7 @@ FT_eCANGet::~FT_eCANGet()
 // =====================================================
 bool FT_eCANGet::FT_init(const unsigned int init_count_num)
 {
+    if (init_count_num == 0) return false;
     auto now = std::chrono::steady_clock::now();
     double elapsed_sec =
         std::chrono::duration<double>(now - start_time_).count();
@@ -116,6 +117,7 @@ bool FT_eCANGet::FT_init(const unsigned int init_count_num)
 
     // 여기부터 실제 offset 수집
     FTData ftdata = FTGet();
+    if (!ftdata.fresh) return false;
 
     if (init_count < init_count_num) {
         init_force[0] += ftdata.Fx / static_cast<double>(init_count_num);
@@ -153,7 +155,7 @@ bool FT_eCANGet::FT_init(const unsigned int init_count_num)
 // =====================================================
 FTData FT_eCANGet::FTGet()
 {
-    // FTData FTGet_ftdata;  // 기본 0으로 초기화 
+    FTGet_ftdata.fresh = false;
 
     if (clnt_sock < 0) {
         return FTGet_ftdata;
@@ -161,8 +163,8 @@ FTData FT_eCANGet::FTGet()
 
     readstrlen = read(
         clnt_sock,
-        reinterpret_cast<char*>(recvmsg),
-        sizeof(recvmsg)
+        reinterpret_cast<char*>(recvmsg) + received_bytes_,
+        sizeof(recvmsg) - received_bytes_
     );
     if (readstrlen == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -182,6 +184,9 @@ FTData FT_eCANGet::FTGet()
         return FTGet_ftdata;
     }
 
+    received_bytes_ += static_cast<size_t>(readstrlen);
+    if (received_bytes_ < sizeof(recvmsg)) return FTGet_ftdata;
+    received_bytes_ = 0;
     unsigned char frame_id = recvmsg[4];
     // ------------------------------------------------
     // Force frame
@@ -211,6 +216,7 @@ FTData FT_eCANGet::FTGet()
         }
         last_stamp_ = now;
 
+        have_force_ = true;
         // Force 값 (init_flag가 true면 offset 적용)
         FTGet_ftdata.Fx = unpackFloat(recvmsg, 0, 0) - (init_flag ? init_force[0] : 0.0);
         FTGet_ftdata.Fy = unpackFloat(recvmsg, 1, 0) - (init_flag ? init_force[1] : 0.0);
@@ -222,6 +228,7 @@ FTData FT_eCANGet::FTGet()
     // ------------------------------------------------
     else if (frame_id == Sensor_ID + 1)
     {
+        have_moment_ = true;
         FTGet_ftdata.Mx = unpackFloat(recvmsg, 0, 1) - (init_flag ? init_moment[0] : 0.0);
         FTGet_ftdata.My = unpackFloat(recvmsg, 1, 1) - (init_flag ? init_moment[1] : 0.0);
         FTGet_ftdata.Mz = unpackFloat(recvmsg, 2, 1) - (init_flag ? init_moment[2] : 0.0);
@@ -246,6 +253,10 @@ FTData FT_eCANGet::FTGet()
         FTGet_ftdata.AAz = unpackFloat(recvmsg, 2, 3);
     }
 
+    if (have_force_ && have_moment_) {
+        FTGet_ftdata.fresh = FTGet_ftdata.finite();
+        have_force_ = have_moment_ = false;
+    }
     return FTGet_ftdata;
 }
 

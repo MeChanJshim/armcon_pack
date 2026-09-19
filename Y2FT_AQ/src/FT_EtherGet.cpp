@@ -58,6 +58,7 @@ FT_EtherGet::~FT_EtherGet()
 /* Data initialization */
 bool FT_EtherGet::FT_init(const unsigned int init_count_num)
 {
+    if (init_count_num == 0) return false;
     auto now = std::chrono::steady_clock::now();
     const double elapsed_sec =
         std::chrono::duration<double>(now - start_time_).count();
@@ -90,6 +91,7 @@ bool FT_EtherGet::FT_init(const unsigned int init_count_num)
 
     if (init_count < init_count_num) {
         const FTData ftdata = FTGet();
+        if (!ftdata.fresh) return false;
         init_force[0] += ftdata.Fx / static_cast<double>(init_count_num);
         init_force[1] += ftdata.Fy / static_cast<double>(init_count_num);
         init_force[2] += ftdata.Fz / static_cast<double>(init_count_num);
@@ -119,6 +121,7 @@ bool FT_EtherGet::FT_init(const unsigned int init_count_num)
 /* Data Aquisition */
 FTData FT_EtherGet::FTGet()
 {
+    last_ftdata_.fresh = false;
     char recvData[RECV_SIZE] = {0};
     const ssize_t bytesReceived = recvMsg(recvData, sizeof(recvData));
     if (bytesReceived < 24) {
@@ -163,6 +166,7 @@ FTData FT_EtherGet::FTGet()
         last_ftdata_.AAz = unpackFloat(recvData + 44);
     }
 
+    last_ftdata_.fresh = last_ftdata_.finite();
     return last_ftdata_;
 }
 
@@ -182,31 +186,22 @@ float FT_EtherGet::unpackFloat(const char *bytes) {
 
 // Function to receive message with retry logic
 ssize_t FT_EtherGet::recvMsg(char *recvData, std::size_t recvSize) {
-    struct sockaddr_in from;
-    socklen_t fromLen = sizeof(from);
-
-    int attempt = 0;
-    while (attempt < MAX_RETRY) {
-        ssize_t bytesReceived = recvfrom(s, recvData, recvSize, 0,
-                                         (struct sockaddr *)&from, &fromLen);
-
-        if (bytesReceived >= 24) {
-            return bytesReceived;
-        } else if (bytesReceived < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return -1;
-            }
-            perror("[ERROR] Failed to receive data");
-        } else {
-            std::cout << "[WARNING] Received " << bytesReceived 
-                      << " bytes, expected at least 24. Retrying...\n";
+    // Drain queued datagrams and use the newest complete sample. Otherwise a
+    // delayed timer can replay a long backlog as apparently current readings.
+    ssize_t latest_size = -1;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        char packet[RECV_SIZE];
+        const ssize_t size = recvfrom(s, packet, sizeof(packet), 0, nullptr, nullptr);
+        if (size < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+                perror("[ERROR] Failed to receive data");
+            if (errno == EINTR) continue;
+            break;
         }
-
-        attempt++;
-        usleep(10000); // 10 ms 대기
+        if (size >= 24) {
+            latest_size = std::min(size, static_cast<ssize_t>(recvSize));
+            std::memcpy(recvData, packet, static_cast<size_t>(latest_size));
+        }
     }
-
-    std::cerr << "[ERROR] Failed to receive proper data after " 
-              << MAX_RETRY << " attempts.\n";
-    return -1;
+    return latest_size;
 }

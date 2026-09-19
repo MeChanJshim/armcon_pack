@@ -19,3 +19,17 @@ and publication.
 ## License
 
 Proprietary. See `../LICENSE`.
+
+## Measurement validity
+
+`FTData::fresh` is true only when a getter consumes a new finite sample.
+Callers retaining the getter API must check it before treating data as new.
+Tare counts only new samples; eCAN publishes a sample after receiving both a
+complete force frame and a complete moment frame, including fragmented TCP reads.
+
+`FTGetMain` waits for a valid robot pose and completed tare before publishing.
+Keep the tool stationary and unloaded during tare. It stops publishing when
+sensor samples stop or the robot pose is older than 250 ms. Gravity torque uses
+the configured sensor-frame CoG transformed into the same axes as gravity.
+
+Regression commands are in `../tests/README.md`.

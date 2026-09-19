@@ -51,3 +51,12 @@ flow is not used in this distribution.
 ## License
 
 Proprietary. See `../LICENSE`.
+
+## Input validity
+
+Startup requires a complete finite joint state with every configured joint
+present exactly once. Changes in incoming joint order are supported. A missing
+joint update for 250 ms suppresses command publication; force-dependent modes
+hold measured joints when valid force feedback is absent for 250 ms. Control
+state is reinitialized when feedback resumes. NaN/Inf pose, joint and wrench
+inputs are rejected. Regression commands are in `../tests/README.md`.

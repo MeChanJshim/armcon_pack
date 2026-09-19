@@ -59,6 +59,7 @@ private:
     mutable std::mutex data_mutex_;
     FTData latest_ftdata_;
     bool has_received_data_ = false;
+    bool unread_ = false;
 
     rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr wrench_stamped_sub_;
     rclcpp::Subscription<geometry_msgs::msg::Wrench>::SharedPtr wrench_sub_;

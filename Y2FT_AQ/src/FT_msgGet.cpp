@@ -52,6 +52,8 @@ FTData FT_msgGet::FTGet()
     std::lock_guard<std::mutex> lock(data_mutex_);
 
     FTData ftdata = latest_ftdata_;
+    ftdata.fresh = unread_ && ftdata.finite();
+    unread_ = false;
     if (init_flag_) {
         ftdata.Fx -= init_force_[0];
         ftdata.Fy -= init_force_[1];
@@ -87,6 +89,7 @@ bool FT_msgGet::FT_init(const unsigned int init_count_num)
 
     if (init_count_ < init_count_num) {
         const FTData ftdata = FTGet();
+        if (!ftdata.fresh) return false;
 
         init_force_[0] += ftdata.Fx / static_cast<double>(init_count_num);
         init_force_[1] += ftdata.Fy / static_cast<double>(init_count_num);
@@ -167,6 +170,7 @@ void FT_msgGet::wrenchStampedCB(const geometry_msgs::msg::WrenchStamped::ConstSh
         msg->wrench.torque.y,
         msg->wrench.torque.z);
     has_received_data_ = true;
+    unread_ = true;
 }
 
 void FT_msgGet::wrenchCB(const geometry_msgs::msg::Wrench::ConstSharedPtr msg)
@@ -180,6 +184,7 @@ void FT_msgGet::wrenchCB(const geometry_msgs::msg::Wrench::ConstSharedPtr msg)
         msg->torque.y,
         msg->torque.z);
     has_received_data_ = true;
+    unread_ = true;
 }
 
 void FT_msgGet::float64MultiArrayCB(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
@@ -189,6 +194,7 @@ void FT_msgGet::float64MultiArrayCB(const std_msgs::msg::Float64MultiArray::Cons
     std::lock_guard<std::mutex> lock(data_mutex_);
     latest_ftdata_ = ftdata;
     has_received_data_ = true;
+    unread_ = true;
 }
 
 FTData FT_msgGet::extractFromArray(const std::vector<double>& data) const

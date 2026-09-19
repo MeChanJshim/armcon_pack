@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <fcntl.h>
+#include <cmath>
 #include "Y2Matrix/YMatrix.hpp" // YMatrix library for matrix operations
 
 #define MAX_RETRY 5
@@ -39,6 +40,12 @@ struct FTData
     {
     }
 
+    // True only when this call consumed a complete, finite new sample.
+    bool fresh = false;
+    bool finite() const {
+        return std::isfinite(Fx) && std::isfinite(Fy) && std::isfinite(Fz) &&
+               std::isfinite(Mx) && std::isfinite(My) && std::isfinite(Mz);
+    }
     double Fx, Fy, Fz;
     double Mx, My, Mz;
     double LAx, LAy, LAz;

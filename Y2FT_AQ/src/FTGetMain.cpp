@@ -152,6 +152,8 @@ private:
     // Δg 모델용: 초기 g_ft(0) 저장
     YMatrix                  g_ft_init_;     // FT frame initial gravity
     bool                     g_ft_init_set_;
+    bool                     pose_received_ = false;
+    std::chrono::steady_clock::time_point pose_received_at_;
 
     std::string              log_file_path_;
     std::ofstream            log_ofs_;
@@ -400,6 +402,10 @@ FTGetMain::FTGetMain(const std::string& ft_ip,
 // ============================================
 void FTGetMain::currentPCB(const std_msgs::msg::Float64MultiArray::ConstSharedPtr msg)
 {
+    if (msg->data.size() != 6 || !std::all_of(msg->data.begin(), msg->data.end(),
+        [](double value) { return std::isfinite(value); })) return;
+    pose_received_ = true;
+    pose_received_at_ = std::chrono::steady_clock::now();
     // [x,y,z,wx,wy,wz]
     for (size_t i = 0; i < 6 && i < msg->data.size(); ++i) {
         current_TCP_pose[i] = msg->data[i];
@@ -563,6 +569,17 @@ FTData FTGetMain::filtering(const FTData& ftdata)
 // ============================================
 void FTGetMain::transferData()
 {
+    if (!pose_received_ || std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - pose_received_at_).count() > 0.25) return;
+    const bool initialized = initFTSensor();
+    // Follow the tare pose until calibration finishes, never the startup identity.
+    if (!g_ft_init_set_) {
+        for (int i = 0; i < 3; ++i) g_ft_init_[i][0] = -9.81 * ROT_Base2TCP[2][i];
+        g_ft_init_set_ = initialized;
+    }
+    if (!initialized) return;
+    const FTData sample = readFTSensor();
+    if (!sample.fresh || !sample.finite()) return;
     FTData filtered_out;
 
     // Reset vectors
@@ -582,10 +599,9 @@ void FTGetMain::transferData()
     }
 
     // 센서 초기 offset 계산 (내부에서 한 번만 동작한다고 가정)
-    initFTSensor();
 
     // Raw 데이터 읽고 필터링
-    filtered_out = filtering(readFTSensor());
+    filtered_out = filtering(sample);
 
     // 센서 frame 힘/모멘트
     SframeForce_[0][0]  = filtered_out.Fx;
@@ -629,7 +645,12 @@ void FTGetMain::transferData()
         }
 
         // τg = r × Fg
-        cross3(TOOL_COG, SGravityForce_, SGravityMoment_);
+        YMatrix cog_tcp(3, 1);
+        for (int i = 0; i < 3; ++i) {
+            cog_tcp[i][0] = 0.0;
+            for (int k = 0; k < 3; ++k) cog_tcp[i][0] += ROT_TCP2FT[i][k] * TOOL_COG[k][0];
+        }
+        cross3(cog_tcp, SGravityForce_, SGravityMoment_);
     }
 #endif
 

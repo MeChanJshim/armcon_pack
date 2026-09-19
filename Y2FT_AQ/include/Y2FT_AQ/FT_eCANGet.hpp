@@ -56,7 +56,10 @@ private:
 
     int  readstrlen = 0;
     struct sockaddr_in st_serv_addr;
-    unsigned char recvmsg[BUF_SIZE];
+    unsigned char recvmsg[BUF_SIZE]{};
+    size_t received_bytes_ = 0;
+    bool have_force_ = false;
+    bool have_moment_ = false;
 
     // Sampling frequency measurement (force frame 기준)
     std::chrono::steady_clock::time_point last_stamp_;

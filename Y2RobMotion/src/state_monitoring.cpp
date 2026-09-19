@@ -20,13 +20,15 @@ void robot_motion::state_monitoring()
         printf("(Ctl_modes: Idling, Position, Guiding, Force)\n");
         printf("------------------------------------------------------------------------------\n");
 
-        /* Current angles */
-        printf(GREEN "<C-Ang> j1:%.2f, j2:%.2f, j3:%.2f, j4:%.2f, j5:%.2f, j6:%.2f, j7:%.2f" RESET "\n",
-        current_angles[0],current_angles[1],current_angles[2],current_angles[3],current_angles[4],current_angles[5],current_angles[6]);
-
-        /* Target angles */
-        printf(BLUE "<T-Ang> j1:%.2f, j2:%.2f, j3:%.2f, j4:%.2f, j5:%.2f, j6:%.2f, j7:%.2f" RESET "\n",
-        target_angles[0],target_angles[1],target_angles[2],target_angles[3],target_angles[4],target_angles[5],target_angles[6]);
+        /* Iterate over the configured robot DOFs (UR: 6, KUKA: 7). */
+        printf(GREEN "<C-Ang>");
+        for (size_t i = 0; i < current_angles.size(); ++i)
+            printf(" j%zu:%.2f", i + 1, current_angles[i]);
+        printf(RESET "\n");
+        printf(BLUE "<T-Ang>");
+        for (size_t i = 0; i < target_angles.size(); ++i)
+            printf(" j%zu:%.2f", i + 1, target_angles[i]);
+        printf(RESET "\n");
 
         printf("------------------------------------------------------------------------------\n");
         

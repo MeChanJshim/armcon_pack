@@ -149,6 +149,8 @@ robot_motion::robot_motion(rclcpp::Node::SharedPtr node, const std::string& RB_n
 /* ROS CMD Motion Callback */
 void robot_motion::cmdMotionCB(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
 {
+    if (!std::all_of(msg->data.begin(), msg->data.end(),
+                     [](double v) { return std::isfinite(v); })) return;
     if(!strcmp(control_mode.c_str(), "Position"))
     {
         for (size_t i = 0; i < msg->data.size() && i < 6; ++i) {
@@ -226,65 +228,39 @@ void robot_motion::cmdModeCB(const std_msgs::msg::String::SharedPtr msg)
 /* ROS Joint State Callback */
 void robot_motion::JointStateCB(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    if(!current_angles_received) {
-        current_angles_received = true;
-    }
-
-    if (msg->position.size() < numOfJoints || msg->name.size() != msg->position.size()) {
+    if (msg->position.size() < static_cast<size_t>(numOfJoints) ||
+        msg->name.size() != msg->position.size() ||
+        !std::all_of(msg->position.begin(), msg->position.end(),
+                     [](double v) { return std::isfinite(v); })) {
         RCLCPP_WARN(node_->get_logger(), "Invalid joint state message");
         return;
     }
-
-    // 첫 번째 메시지에서 매핑 테이블 생성
-    if (!mapping_initialized_) {
-        initializeJointMapping(msg);
+    // Rebuild before committing: publishers may change the joint order.
+    initializeJointMapping(msg);
+    if (!mapping_initialized_) return;
+    for (int i = 0; i < numOfJoints; ++i) {
+        current_angles[i] = msg->position[joint_mapping_[i]];
     }
-
-    // 매핑 테이블을 사용해서 빠르게 복사
-    for (size_t i = 0; i < numOfJoints; ++i) {
-        if (joint_mapping_[i] >= 0 && joint_mapping_[i] < static_cast<int>(msg->position.size())) {
-            current_angles[i] = msg->position[joint_mapping_[i]];
-        } else {
-            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
-                                 "Invalid mapping for joint %zu", i);
-        }
-    }
+    current_angles_received = true;
+    joint_received_at_ = std::chrono::steady_clock::now();
 }
 
 void robot_motion::RemapedStateCB(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    if(!runtime_config_.remapping_enabled) {
-        return;
-    }
-
-    if(!current_angles_received) {
-        current_angles_received = true;
-    }
-
-    if (msg->position.size() < numOfJoints || msg->name.size() != msg->position.size()) {
-        RCLCPP_WARN(node_->get_logger(), "Invalid joint state message");
-        return;
-    }
-
-    // 첫 번째 메시지에서 매핑 테이블 생성
-    if (!mapping_initialized_) {
-        initializeJointMapping(msg);
-    }
-
-    // 매핑 테이블을 사용해서 빠르게 복사
-    for (size_t i = 0; i < numOfJoints; ++i) {
-        if (joint_mapping_[i] >= 0 && joint_mapping_[i] < static_cast<int>(msg->position.size())) {
-            current_angles[i] = msg->position[joint_mapping_[i]];
-        } else {
-            RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
-                                 "Invalid mapping for joint %zu", i);
-        }
-    }
+    if (runtime_config_.remapping_enabled) JointStateCB(msg);
 }
 
 /* ROS FT Sensor Callback */
 void robot_motion::ftsensorCB(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
 {
+    const auto& w = msg->wrench;
+    const std::array<double, 6> sample = {w.force.x, w.force.y, w.force.z,
+                                        w.torque.x, w.torque.y, w.torque.z};
+    if (!std::all_of(sample.begin(), sample.end(), [](double v) { return std::isfinite(v); })) {
+        return;
+    }
+    force_received_ = true;
+    force_received_at_ = std::chrono::steady_clock::now();
     ft1data[0] = msg->wrench.force.x;
     ft1data[1] = msg->wrench.force.y;
     ft1data[2] = msg->wrench.force.z;
@@ -297,25 +273,21 @@ void robot_motion::ftsensorCB(const geometry_msgs::msg::WrenchStamped::SharedPtr
 /* joint state mapping function */
 void robot_motion::initializeJointMapping(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    joint_mapping_.resize(numOfJoints, -1);
-
-    for (size_t i = 0; i < numOfJoints; ++i) {
+    std::vector<int> mapping(numOfJoints, -1);
+    for (int i = 0; i < numOfJoints; ++i) {
         for (size_t j = 0; j < msg->name.size(); ++j) {
             if (joint_names[i] == msg->name[j]) {
-                joint_mapping_[i] = j;
-                RCLCPP_INFO(node_->get_logger(),
-                            "Joint %s mapped: expected_index=%zu -> msg_index=%zu",
-                            joint_names[i].c_str(), i, j);
-                break;
+                if (mapping[i] != -1) { mapping_initialized_ = false; return; }
+                mapping[i] = static_cast<int>(j);
             }
         }
-
-        if (joint_mapping_[i] == -1) {
-            RCLCPP_ERROR(node_->get_logger(),
-                         "Joint %s not found in joint state message!",
-                         joint_names[i].c_str());
+        if (mapping[i] == -1) {
+            mapping_initialized_ = false;
+            RCLCPP_WARN(node_->get_logger(), "Missing joint: %s", joint_names[i].c_str());
+            return;
         }
     }
+    joint_mapping_ = std::move(mapping);
     mapping_initialized_ = true;
 }
 
@@ -559,7 +531,22 @@ void robot_motion::control_joystick_force()
 void robot_motion::main_control()
 {
     if(start_flag){
+        const auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration<double>(now - joint_received_at_).count() > 0.25) {
+            pre_control_mode = "none";
+            return;  // Never generate motion from an expired joint state.
+        }
         state_update();
+        const bool needs_force = control_mode == "Force" || control_mode == "Guiding" ||
+                                 control_mode == "Joystick_force";
+        if (needs_force && (!force_received_ ||
+            std::chrono::duration<double>(now - force_received_at_).count() > 0.25)) {
+            target_angles = current_angles;
+            target_pose = current_pose;
+            pre_control_mode = "none";
+            state_publisher();
+            return;
+        }
 
         if(control_mode == "Idling") control_idling();
         else if (control_mode == "Position") control_position();

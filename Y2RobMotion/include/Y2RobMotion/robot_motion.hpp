@@ -78,6 +78,9 @@ private:
 
     /* Init flags */
     bool current_angles_received = false;
+    bool force_received_ = false;
+    std::chrono::steady_clock::time_point joint_received_at_;
+    std::chrono::steady_clock::time_point force_received_at_;
 
     /* Mimic mode */
     std::string Mimic_mode; // Master, Slave, None
