@@ -108,6 +108,10 @@ def _blend_motion(waypoints, linear_velocity, angular_velocity, holding_time,
                   angular_velocity_limit=math.radians(5.0)):
     if len(waypoints) < 2:
         raise ValueError("motion path needs at least two poses")
+    if not math.isfinite(period) or period <= 0:
+        raise ValueError("Control period must be finite and greater than zero")
+    # Bound intermediate lists before allocating trajectory samples.
+    max_samples = 200_000
     is_force = len(waypoints[0]) == 9
     interpolated = []
     for index in range(1, len(waypoints)):
@@ -138,6 +142,12 @@ def _blend_motion(waypoints, linear_velocity, angular_velocity, holding_time,
         if not linear_velocity[index] and not angular_velocity[index] and not holding_time[index]:
             segment_time = travel_time
 
+        sample_estimate = (segment_time + starting_time + resting_time) / period
+        if not math.isfinite(sample_estimate) or sample_estimate + len(interpolated) > max_samples:
+            raise ValueError(
+                f"Trajectory too long (maximum {max_samples * period:.0f} s including padding). "
+                "Check target distance and velocity in mm/s; use a shorter move or a higher velocity."
+            )
         steps = int(segment_time / period)
         for sample in range(steps):
             amount = sample / (steps - 1) if steps > 1 else 0.0
@@ -485,7 +495,7 @@ class Y2JoyGuiNode(Node):
             self.current_position = list(msg.data[:6])
         with self.monitor_lock:
             self.monitor_data["currentP"] = list(msg.data[:6])
-        if not self.motion_busy:
+        if self.robot_command_state == "Waiting for current position":
             self.robot_command_state = "Robot pose received"
 
     def on_target_pose(self, msg):
